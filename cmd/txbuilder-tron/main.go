@@ -1,66 +1,52 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/koku-web3/txbuilder-tron/api"
+	log "github.com/koku-web3/logko"
 	"github.com/koku-web3/txbuilder-tron/internal/config"
 	"github.com/koku-web3/txbuilder-tron/internal/service"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 func main() {
 	configPath := flag.String("config", config.DEFAULT_PATH, "path to config file")
 	flag.Parse()
 
-	if err := config.LoadConfig(*configPath); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
+	cfg, err := config.LoadConfig(*configPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
 
-	if err := config.InitLogger(); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to init logger: %v\n", err)
+	if err := log.SetupFromTOML(cfg.Path); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to setup log: %v", err)
 		os.Exit(1)
 	}
 
-	log := config.GetLogger()
 	log.Info("starting txbuilder-tron service",
-		"chain_id", config.GetConfig().Chain.ChainID,
-		"rpc_url", config.GetConfig().Chain.RPCURL,
-		"grpc_host", config.GetConfig().GRPC.Host,
-		"grpc_port", config.GetConfig().GRPC.Port,
+		"chain_id", cfg.Chain.ChainID,
+		"rpc_url", cfg.Chain.RPCURL,
+		"grpc_host", cfg.GRPC.Host,
+		"grpc_port", cfg.GRPC.Port,
 	)
 
-	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d",
-		config.GetConfig().GRPC.Host,
-		config.GetConfig().GRPC.Port))
-	if err != nil {
-		log.Error("failed to listen", "error", err)
-		os.Exit(1)
-	}
-
-	grpcServer := grpc.NewServer()
-	api.RegisterTxBuilderServer(grpcServer, service.NewTxBuilderService())
-
-	reflection.Register(grpcServer)
+	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
-		log.Info("gRPC server listening", "addr", lis.Addr().String())
-		if err := grpcServer.Serve(lis); err != nil {
-			log.Error("gRPC server stopped", "error", err)
-		}
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		<-quit
+		log.Info("Received shutdown signal, initiating graceful shutdown")
+		cancel()
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.Info("shutting down gRPC server")
-	grpcServer.GracefulStop()
+	grpcSrv := service.NewGRPCServer(cfg.GRPC.Host, cfg.GRPC.Port)
+	if err := grpcSrv.Start(ctx); err != nil {
+		log.Error("gRPC server error", "error", err)
+	}
 }

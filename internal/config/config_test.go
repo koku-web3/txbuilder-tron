@@ -42,34 +42,121 @@ vmodule = ""
 		t.Fatalf("failed to close temp file: %v", err)
 	}
 
-	if err := LoadConfig(tmpFile.Name()); err != nil {
+	_, err = LoadConfig(tmpFile.Name())
+	if err != nil {
 		t.Fatalf("LoadConfig() error = %v", err)
 	}
 
 	cfg := GetConfig()
+	if cfg == nil {
+		t.Fatal("GetConfig() returned nil")
+	}
+
+	// Test ChainConfig
 	if cfg.Chain.ChainID != "tron" {
 		t.Errorf("ChainID = %v, want %v", cfg.Chain.ChainID, "tron")
 	}
 	if cfg.Chain.RPCURL != "https://nile.trongrid.io" {
 		t.Errorf("RPCURL = %v, want %v", cfg.Chain.RPCURL, "https://nile.trongrid.io")
 	}
+
+	// Test GRPCConfig
 	if cfg.GRPC.Host != "127.0.0.1" {
 		t.Errorf("GRPC.Host = %v, want %v", cfg.GRPC.Host, "127.0.0.1")
 	}
 	if cfg.GRPC.Port != 50051 {
 		t.Errorf("GRPC.Port = %v, want %v", cfg.GRPC.Port, 50051)
 	}
+
+	// Test LogConfig
 	if !cfg.Log.Rotation {
 		t.Error("Log.Rotation = false, want true")
+	}
+	if cfg.Log.FilePath != "/tmp/test.log" {
+		t.Errorf("Log.FilePath = %v, want %v", cfg.Log.FilePath, "/tmp/test.log")
+	}
+	if cfg.Log.MaxSizeMB != 100 {
+		t.Errorf("Log.MaxSizeMB = %v, want %v", cfg.Log.MaxSizeMB, 100)
+	}
+	if cfg.Log.MaxBackups != 10 {
+		t.Errorf("Log.MaxBackups = %v, want %v", cfg.Log.MaxBackups, 10)
+	}
+	if cfg.Log.MaxAge != 30 {
+		t.Errorf("Log.MaxAge = %v, want %v", cfg.Log.MaxAge, 30)
+	}
+	if !cfg.Log.Compress {
+		t.Error("Log.Compress = false, want true")
+	}
+	if cfg.Log.Format != "terminal" {
+		t.Errorf("Log.Format = %v, want %v", cfg.Log.Format, "terminal")
 	}
 	if cfg.Log.Verbosity != 3 {
 		t.Errorf("Log.Verbosity = %v, want %v", cfg.Log.Verbosity, 3)
 	}
+	if cfg.Log.VModule != "" {
+		t.Errorf("Log.VModule = %v, want %v", cfg.Log.VModule, "")
+	}
+
+	// Test Path field is set to the loaded config file path
+	if cfg.Path != tmpFile.Name() {
+		t.Errorf("Path = %v, want %v", cfg.Path, tmpFile.Name())
+	}
 }
 
 func TestLoadConfig_FileNotFound(t *testing.T) {
-	err := LoadConfig("/nonexistent/config.toml")
+	_, err := LoadConfig("/nonexistent/config.toml")
 	if err == nil {
 		t.Error("LoadConfig() should return error for nonexistent file")
+	}
+}
+
+func TestSetConfigForTest(t *testing.T) {
+	testCfg := &Config{
+		Chain: ChainConfig{
+			ChainID: "test-chain",
+			RPCURL:  "http://test.example.com",
+		},
+		GRPC: GRPCConfig{
+			Host: "localhost",
+			Port: 9090,
+		},
+		Log: LogConfig{
+			Rotation:  false,
+			FilePath:  "/var/log/test.log",
+			MaxSizeMB: 50,
+		},
+		Path: "/test/path/config.toml",
+	}
+
+	SetConfigForTest(testCfg)
+
+	cfg := GetConfig()
+	if cfg == nil {
+		t.Fatal("GetConfig() returned nil after SetConfigForTest")
+	}
+
+	if cfg.Chain.ChainID != "test-chain" {
+		t.Errorf("Chain.ChainID = %v, want %v", cfg.Chain.ChainID, "test-chain")
+	}
+	if cfg.Chain.RPCURL != "http://test.example.com" {
+		t.Errorf("Chain.RPCURL = %v, want %v", cfg.Chain.RPCURL, "http://test.example.com")
+	}
+	if cfg.GRPC.Host != "localhost" {
+		t.Errorf("GRPC.Host = %v, want %v", cfg.GRPC.Host, "localhost")
+	}
+	if cfg.GRPC.Port != 9090 {
+		t.Errorf("GRPC.Port = %v, want %v", cfg.GRPC.Port, 9090)
+	}
+	if cfg.Log.Rotation {
+		t.Error("Log.Rotation = true, want false")
+	}
+	if cfg.Log.FilePath != "/var/log/test.log" {
+		t.Errorf("Log.FilePath = %v, want %v", cfg.Log.FilePath, "/var/log/test.log")
+	}
+	if cfg.Log.MaxSizeMB != 50 {
+		t.Errorf("Log.MaxSizeMB = %v, want %v", cfg.Log.MaxSizeMB, 50)
+	}
+	if cfg.Path != "/test/path/config.toml" {
+		t.Errorf("Path = %v, want %v", cfg.Path, "/test/path/config.toml")
 	}
 }

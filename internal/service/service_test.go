@@ -2,29 +2,11 @@ package service
 
 import (
 	"context"
-	"log/slog"
 	"testing"
 
-	"github.com/koku-web3/logko"
-	"github.com/koku-web3/txbuilder-tron/api"
+	"github.com/koku-web3/txbuilder-tron/grpc"
 	"github.com/koku-web3/txbuilder-tron/internal/config"
 )
-
-// mockLogger is a logger that does nothing, used for testing
-type mockLogger struct{}
-
-func (m *mockLogger) With(ctx ...interface{}) logko.Logger                 { return m }
-func (m *mockLogger) New(ctx ...interface{}) logko.Logger                  { return m }
-func (m *mockLogger) Log(level slog.Level, msg string, ctx ...interface{}) {}
-func (m *mockLogger) Trace(msg string, ctx ...interface{})                 {}
-func (m *mockLogger) Debug(msg string, ctx ...interface{})                 {}
-func (m *mockLogger) Info(msg string, ctx ...interface{})                  {}
-func (m *mockLogger) Warn(msg string, ctx ...interface{})                  {}
-func (m *mockLogger) Error(msg string, ctx ...interface{})                 {}
-func (m *mockLogger) Crit(msg string, ctx ...interface{})                  {}
-func (m *mockLogger) Write(level slog.Level, msg string, attrs ...any)     {}
-func (m *mockLogger) Enabled(ctx context.Context, level slog.Level) bool   { return false }
-func (m *mockLogger) Handler() slog.Handler                                { return nil }
 
 func TestVerifyAddress(t *testing.T) {
 	tests := []struct {
@@ -69,11 +51,9 @@ func TestVerifyAddress(t *testing.T) {
 			cfg := &config.Config{}
 			config.SetConfigForTest(cfg)
 
-			svc := &TxBuilderService{
-				log: &mockLogger{},
-			}
+			svc := &TxBuilderService{}
 
-			req := &api.VerifyAddressRequest{
+			req := &grpc.VerifyAddressRequest{
 				TraceId: tt.traceID,
 				Address: tt.address,
 			}
@@ -126,11 +106,9 @@ func TestVerifyContractAddress(t *testing.T) {
 			cfg := &config.Config{}
 			config.SetConfigForTest(cfg)
 
-			svc := &TxBuilderService{
-				log: &mockLogger{},
-			}
+			svc := &TxBuilderService{}
 
-			req := &api.VerifyContractAddressRequest{
+			req := &grpc.VerifyContractAddressRequest{
 				TraceId: tt.traceID,
 				Address: tt.address,
 			}
@@ -151,18 +129,16 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 	cfg := &config.Config{}
 	config.SetConfigForTest(cfg)
 
-	svc := &TxBuilderService{
-		log: &mockLogger{},
-	}
+	svc := &TxBuilderService{}
 
 	tests := []struct {
 		name    string
-		req     *api.CheckSufficientBalanceRequest
+		req     *grpc.CheckSufficientBalanceRequest
 		wantErr bool
 	}{
 		{
 			name: "missing trace_id",
-			req: &api.CheckSufficientBalanceRequest{
+			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "",
 				ChainId:     "tron",
 				CoinId:      "trx",
@@ -174,7 +150,7 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 		},
 		{
 			name: "missing chain_id",
-			req: &api.CheckSufficientBalanceRequest{
+			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainId:     "",
 				CoinId:      "trx",
@@ -186,7 +162,7 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 		},
 		{
 			name: "missing coin_id",
-			req: &api.CheckSufficientBalanceRequest{
+			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainId:     "tron",
 				CoinId:      "",
@@ -198,7 +174,7 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 		},
 		{
 			name: "missing from_address",
-			req: &api.CheckSufficientBalanceRequest{
+			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainId:     "tron",
 				CoinId:      "trx",
@@ -210,7 +186,7 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 		},
 		{
 			name: "missing amount",
-			req: &api.CheckSufficientBalanceRequest{
+			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainId:     "tron",
 				CoinId:      "trx",
@@ -222,7 +198,7 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 		},
 		{
 			name: "token without contract",
-			req: &api.CheckSufficientBalanceRequest{
+			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainId:     "tron",
 				CoinId:      "usdt",
@@ -249,18 +225,16 @@ func TestBuildSignRawData_Validation(t *testing.T) {
 	cfg := &config.Config{}
 	config.SetConfigForTest(cfg)
 
-	svc := &TxBuilderService{
-		log: &mockLogger{},
-	}
+	svc := &TxBuilderService{}
 
 	tests := []struct {
 		name    string
-		req     *api.BuildSignRawDataRequest
+		req     *grpc.BuildSignRawDataRequest
 		wantErr bool
 	}{
 		{
 			name: "missing biz_id",
-			req: &api.BuildSignRawDataRequest{
+			req: &grpc.BuildSignRawDataRequest{
 				BizId:       "",
 				ChainId:     "tron",
 				CoinId:      "trx",
@@ -274,7 +248,7 @@ func TestBuildSignRawData_Validation(t *testing.T) {
 		},
 		{
 			name: "invalid from_address",
-			req: &api.BuildSignRawDataRequest{
+			req: &grpc.BuildSignRawDataRequest{
 				BizId:       "test-biz-id",
 				ChainId:     "tron",
 				CoinId:      "trx",
@@ -288,7 +262,7 @@ func TestBuildSignRawData_Validation(t *testing.T) {
 		},
 		{
 			name: "invalid to_address",
-			req: &api.BuildSignRawDataRequest{
+			req: &grpc.BuildSignRawDataRequest{
 				BizId:       "test-biz-id",
 				ChainId:     "tron",
 				CoinId:      "trx",
@@ -302,7 +276,7 @@ func TestBuildSignRawData_Validation(t *testing.T) {
 		},
 		{
 			name: "amount with decimal point",
-			req: &api.BuildSignRawDataRequest{
+			req: &grpc.BuildSignRawDataRequest{
 				BizId:       "test-biz-id",
 				ChainId:     "tron",
 				CoinId:      "trx",
@@ -321,6 +295,74 @@ func TestBuildSignRawData_Validation(t *testing.T) {
 			_, err := svc.BuildSignRawData(context.Background(), tt.req)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildSignRawData() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestTxBroadcast_Validation(t *testing.T) {
+	cfg := &config.Config{}
+	config.SetConfigForTest(cfg)
+
+	svc := &TxBuilderService{}
+
+	tests := []struct {
+		name    string
+		req     *grpc.TxBroadcastRequest
+		wantErr bool
+	}{
+		{
+			name: "missing trace_id",
+			req: &grpc.TxBroadcastRequest{
+				TraceId:   "",
+				RawData:   "0a86010a028f1622080223083f23e5c3ba40c0c5b3b3fd335a68080112640a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412330a1541a162cbc2a988d8bf99506def3942c9e20aa0634a121541d3682962027e721c5247a9faf7865fe4a71d54381880ade20470c8f9afb3fd33124174807df06df3c6ef3071a24311b430e309d4974054000e725ab68f6135ad53190d1a0a6be185f2f0603b1bae7ac2fd206e77047023ac379df0483e8983aa18d501",
+				Signature: "abcd1234",
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing raw_data",
+			req: &grpc.TxBroadcastRequest{
+				TraceId:   "test-trace-id",
+				RawData:   "",
+				Signature: "abcd1234",
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing signature",
+			req: &grpc.TxBroadcastRequest{
+				TraceId:   "test-trace-id",
+				RawData:   "0a86010a028f1622080223083f23e5c3ba40c0c5b3b3fd335a68080112640a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412330a1541a162cbc2a988d8bf99506def3942c9e20aa0634a121541d3682962027e721c5247a9faf7865fe4a71d54381880ade20470c8f9afb3fd33124174807df06df3c6ef3071a24311b430e309d4974054000e725ab68f6135ad53190d1a0a6be185f2f0603b1bae7ac2fd206e77047023ac379df0483e8983aa18d501",
+				Signature: "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "raw_data too long",
+			req: &grpc.TxBroadcastRequest{
+				TraceId:   "test-trace-id",
+				RawData:   string(make([]byte, 4097)),
+				Signature: "abcd1234",
+			},
+			wantErr: true,
+		},
+		{
+			name: "signature too long",
+			req: &grpc.TxBroadcastRequest{
+				TraceId:   "test-trace-id",
+				RawData:   "0a86010a028f1622080223083f23e5c3ba40c0c5b3b3fd335a68080112640a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412330a1541a162cbc2a988d8bf99506def3942c9e20aa0634a121541d3682962027e721c5247a9faf7865fe4a71d54381880ade20470c8f9afb3fd33124174807df06df3c6ef3071a24311b430e309d4974054000e725ab68f6135ad53190d1a0a6be185f2f0603b1bae7ac2fd206e77047023ac379df0483e8983aa18d501",
+				Signature: string(make([]byte, 513)),
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := svc.TxBroadcast(context.Background(), tt.req)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TxBroadcast() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

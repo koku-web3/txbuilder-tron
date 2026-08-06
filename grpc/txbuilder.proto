@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package api;
+package chain;
 
-option go_package = "github.com/koku-web3/txbuilder-tron/api";
+option go_package = "github.com/koku-web3/txbuilder-tron/grpc;grpc";
 
 // TxBuilder service provides transaction construction APIs
 service TxBuilder {
@@ -17,6 +17,9 @@ service TxBuilder {
 
     // Build unsigned transaction raw data for signing
     rpc BuildSignRawData(BuildSignRawDataRequest) returns (BuildSignRawDataResponse);
+
+    // Broadcast a signed transaction to the network
+    rpc TxBroadcast(TxBroadcastRequest) returns (TxBroadcastResponse);
 }
 
 // Common request with trace ID
@@ -73,5 +76,17 @@ message BuildSignRawDataRequest {
 }
 
 message BuildSignRawDataResponse {
-    string msg = 1;
+    string msg = 1;        // SHA256(raw_data) - 待签名内容
+    string raw_data = 2;   // 原始交易数据 (hex 编码) - Coordinator 用于构造完整交易
+}
+
+// TxBroadcast
+message TxBroadcastRequest {
+    string trace_id = 1;
+    string raw_data = 2;    // 原始交易数据 (hex 编码)
+    string signature = 3;    // 签名 (hex 编码)
+}
+
+message TxBroadcastResponse {
+    bool success = 1;
 }

@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v6.33.1
-// source: api/txbuilder.proto
+// source: grpc/txbuilder.proto
 
-package api
+package grpc
 
 import (
 	context "context"
@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TxBuilder_VerifyAddress_FullMethodName          = "/api.TxBuilder/VerifyAddress"
-	TxBuilder_VerifyContractAddress_FullMethodName  = "/api.TxBuilder/VerifyContractAddress"
-	TxBuilder_CheckSufficientBalance_FullMethodName = "/api.TxBuilder/CheckSufficientBalance"
-	TxBuilder_BuildSignRawData_FullMethodName       = "/api.TxBuilder/BuildSignRawData"
+	TxBuilder_VerifyAddress_FullMethodName          = "/chain.TxBuilder/VerifyAddress"
+	TxBuilder_VerifyContractAddress_FullMethodName  = "/chain.TxBuilder/VerifyContractAddress"
+	TxBuilder_CheckSufficientBalance_FullMethodName = "/chain.TxBuilder/CheckSufficientBalance"
+	TxBuilder_BuildSignRawData_FullMethodName       = "/chain.TxBuilder/BuildSignRawData"
+	TxBuilder_TxBroadcast_FullMethodName            = "/chain.TxBuilder/TxBroadcast"
 )
 
 // TxBuilderClient is the client API for TxBuilder service.
@@ -39,6 +40,8 @@ type TxBuilderClient interface {
 	CheckSufficientBalance(ctx context.Context, in *CheckSufficientBalanceRequest, opts ...grpc.CallOption) (*CheckSufficientBalanceResponse, error)
 	// Build unsigned transaction raw data for signing
 	BuildSignRawData(ctx context.Context, in *BuildSignRawDataRequest, opts ...grpc.CallOption) (*BuildSignRawDataResponse, error)
+	// Broadcast a signed transaction to the network
+	TxBroadcast(ctx context.Context, in *TxBroadcastRequest, opts ...grpc.CallOption) (*TxBroadcastResponse, error)
 }
 
 type txBuilderClient struct {
@@ -89,6 +92,16 @@ func (c *txBuilderClient) BuildSignRawData(ctx context.Context, in *BuildSignRaw
 	return out, nil
 }
 
+func (c *txBuilderClient) TxBroadcast(ctx context.Context, in *TxBroadcastRequest, opts ...grpc.CallOption) (*TxBroadcastResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TxBroadcastResponse)
+	err := c.cc.Invoke(ctx, TxBuilder_TxBroadcast_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TxBuilderServer is the server API for TxBuilder service.
 // All implementations must embed UnimplementedTxBuilderServer
 // for forward compatibility.
@@ -103,6 +116,8 @@ type TxBuilderServer interface {
 	CheckSufficientBalance(context.Context, *CheckSufficientBalanceRequest) (*CheckSufficientBalanceResponse, error)
 	// Build unsigned transaction raw data for signing
 	BuildSignRawData(context.Context, *BuildSignRawDataRequest) (*BuildSignRawDataResponse, error)
+	// Broadcast a signed transaction to the network
+	TxBroadcast(context.Context, *TxBroadcastRequest) (*TxBroadcastResponse, error)
 	mustEmbedUnimplementedTxBuilderServer()
 }
 
@@ -124,6 +139,9 @@ func (UnimplementedTxBuilderServer) CheckSufficientBalance(context.Context, *Che
 }
 func (UnimplementedTxBuilderServer) BuildSignRawData(context.Context, *BuildSignRawDataRequest) (*BuildSignRawDataResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BuildSignRawData not implemented")
+}
+func (UnimplementedTxBuilderServer) TxBroadcast(context.Context, *TxBroadcastRequest) (*TxBroadcastResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method TxBroadcast not implemented")
 }
 func (UnimplementedTxBuilderServer) mustEmbedUnimplementedTxBuilderServer() {}
 func (UnimplementedTxBuilderServer) testEmbeddedByValue()                   {}
@@ -218,11 +236,29 @@ func _TxBuilder_BuildSignRawData_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TxBuilder_TxBroadcast_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TxBroadcastRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TxBuilderServer).TxBroadcast(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TxBuilder_TxBroadcast_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TxBuilderServer).TxBroadcast(ctx, req.(*TxBroadcastRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TxBuilder_ServiceDesc is the grpc.ServiceDesc for TxBuilder service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TxBuilder_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "api.TxBuilder",
+	ServiceName: "chain.TxBuilder",
 	HandlerType: (*TxBuilderServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -241,7 +277,11 @@ var TxBuilder_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "BuildSignRawData",
 			Handler:    _TxBuilder_BuildSignRawData_Handler,
 		},
+		{
+			MethodName: "TxBroadcast",
+			Handler:    _TxBuilder_TxBroadcast_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/txbuilder.proto",
+	Metadata: "grpc/txbuilder.proto",
 }

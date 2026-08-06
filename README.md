@@ -1,8 +1,14 @@
 # txbuilder-tron
 
-TRON 区块链交易构造 gRPC 服务，提供地址验证、余额检查、交易原始数据构造等 API。
+TRON 区块链交易构造 gRPC 服务，提供地址验证、余额检查、交易原始数据构造、交易广播等 API。
 
+
+
+## 概述
 ![服务架构示意图](docs/images/txbuilder-tron-architecture.png)
+**职责说明**：
+- **txbuilder-tron**：负责 TRON 区块链的所有细节（交易构造、protobuf 组装、TRON API 调用）
+- **Coordinator**：只需调用接口构造交易、调用 KMS 请求签名、调用广播
 
 ## 环境要求
 
@@ -26,7 +32,7 @@ txbuilder-tron/
 │       ├── address.go       # Base58 编解码、地址校验
 │       ├── address_test.go
 │       └── rpc.go           # TRON 节点 HTTP JSON-RPC 客户端
-├── api/
+├── grpc/
 │   ├── txbuilder.proto      # gRPC 服务和消息定义
 │   ├── txbuilder.pb.go     # 生成的 protobuf 代码
 │   └── txbuilder_grpc.pb.go
@@ -156,9 +162,37 @@ rpc BuildSignRawData(BuildSignRawDataRequest) returns (BuildSignRawDataResponse)
 **响应：**
 
 
-| 字段  | 类型     | 说明                             |
-| --- | ------ | ------------------------------ |
-| msg | string | 原始数据的 SHA-256 哈希（十六进制字符串，用于签名） |
+| 字段      | 类型     | 说明                                    |
+| ------- | ------ | ------------------------------------- |
+| msg     | string | 原始数据的 SHA-256 哈希（十六进制字符串，用于签名）        |
+| raw_data | string | 交易原始数据（十六进制字符串），用于后续组装完整交易         |
+
+
+
+### 5. TxBroadcast
+
+广播已签名的交易数据到 TRON 网络。
+
+```protobuf
+rpc TxBroadcast(TxBroadcastRequest) returns (TxBroadcastResponse);
+```
+
+**请求：**
+
+
+| 字段       | 类型     | 说明                         |
+| -------- | ------ | -------------------------- |
+| trace_id | string | 追踪 ID（必填）                   |
+| raw_data | string | 交易原始数据（十六进制字符串，1-4096 字符）   |
+| signature | string | 签名数据（十六进制字符串，1-512 字符）      |
+
+
+**响应：**
+
+
+| 字段      | 类型   | 说明      |
+| ------- | ---- | ------- |
+| success | bool | 广播是否成功 |
 
 
 
@@ -179,7 +213,7 @@ go run ./cmd/txbuilder-tron/main.go
 grpcurl -plaintext -d '{
   "trace_id": "test-001",
   "address": "TLa2f6VPqBkREki5JsqLkNqyjLRBaMFKDY"
-}' localhost:50051 api.TxBuilder/VerifyAddress
+}' localhost:50051 chain.TxBuilder/VerifyAddress
 
 # 检查余额（TRX）
 grpcurl -plaintext -d '{
@@ -189,7 +223,7 @@ grpcurl -plaintext -d '{
   "is_basic_coin": true,
   "from_address": "TLa2f6VPqBkREki5JsqLkNqyjLRBaMFKDY",
   "amount": "1000000"
-}' localhost:50051 api.TxBuilder/CheckSufficientBalance
+}' localhost:50051 chain.TxBuilder/CheckSufficientBalance
 
 # 构造 TRX 转账交易
 grpcurl -plaintext -d '{
@@ -201,7 +235,15 @@ grpcurl -plaintext -d '{
   "from_address": "TLa2f6VPqBkREki5JsqLkNqyjLRBaMFKDY",
   "to_address": "TN3W4H6rK4f4tRhqDaJf9u5Q5yT5Z3s8fB",
   "amount": "1000000"
-}' localhost:50051 api.TxBuilder/BuildSignRawData
+}' localhost:50051 chain.TxBuilder/BuildSignRawData
+# 响应示例: {"msg": "...", "raw_data": "..."}
+
+# 广播已签名的交易（raw_data 和 signature 由 Coordinator 提供）
+grpcurl -plaintext -d '{
+  "trace_id": "broadcast-001",
+  "raw_data": "0a86010a028f162208022308...",
+  "signature": "abcd1234..."
+}' localhost:50051 chain.TxBuilder/TxBroadcast
 ```
 
 
@@ -215,7 +257,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/koku-web3/txbuilder-tron/api"
+	"github.com/koku-web3/txbuilder-tron/grpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -227,11 +269,11 @@ func main() {
 	}
 	defer conn.Close()
 
-	client := api.NewTxBuilderClient(conn)
+	client := grpc.NewTxBuilderClient(conn)
 	ctx := context.Background()
 
 	// 验证地址
-	resp, err := client.VerifyAddress(ctx, &api.VerifyAddressRequest{
+	resp, err := client.VerifyAddress(ctx, &grpc.VerifyAddressRequest{
 		TraceId: "test-001",
 		Address: "TLa2f6VPqBkREki5JsqLkNqyjLRBaMFKDY",
 	})
@@ -241,7 +283,7 @@ func main() {
 	fmt.Printf("地址合法: %v\n", resp.IsValid)
 
 	// 构造 TRX 转账
-	txResp, err := client.BuildSignRawData(ctx, &api.BuildSignRawDataRequest{
+	txResp, err := client.BuildSignRawData(ctx, &grpc.BuildSignRawDataRequest{
 		BizId:       "tx-001",
 		ChainId:     "tron",
 		CoinId:      "trx",
@@ -267,7 +309,13 @@ func main() {
 ### 生成 protobuf 代码
 
 ```bash
-./scripts/gen.sh
+# 进入项目根目录
+cd ./txbuilder-tron
+
+# 重新生成 Go 代码
+protoc --go_out=. --go_opt=paths=source_relative \
+       --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+       grpc/txbuilder.proto
 ```
 
 需要安装：`protoc`、`protoc-gen-go`、`protoc-gen-go-grpc`。

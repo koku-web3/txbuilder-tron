@@ -3,6 +3,7 @@ package tron
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,14 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/koku-web3/logko"
+	log "github.com/koku-web3/logko"
 	"github.com/koku-web3/txbuilder-tron/internal/config"
 )
 
 type RPCClient struct {
 	rpcURL string
 	client *http.Client
-	log    logko.Logger
 }
 
 func NewRPCClient() *RPCClient {
@@ -27,13 +27,10 @@ func NewRPCClient() *RPCClient {
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		log: config.GetLogger(),
 	}
 }
 
 func (c *RPCClient) call(ctx context.Context, path string, params interface{}) (json.RawMessage, error) {
-	log := c.log
-
 	var body []byte
 	var err error
 
@@ -156,8 +153,6 @@ func (c *RPCClient) call(ctx context.Context, path string, params interface{}) (
 }
 
 func (c *RPCClient) GetAccount(ctx context.Context, address string) (json.RawMessage, error) {
-	log := c.log
-
 	log.Debug("[RPCClient.GetAccount] calling wallet/getaccount",
 		"address", address,
 	)
@@ -184,8 +179,6 @@ func (c *RPCClient) GetAccount(ctx context.Context, address string) (json.RawMes
 }
 
 func (c *RPCClient) GetBalance(ctx context.Context, address string) (int64, error) {
-	log := c.log
-
 	log.Debug("[RPCClient.GetBalance] calling wallet/getaccount",
 		"address", address,
 	)
@@ -225,8 +218,6 @@ func (c *RPCClient) GetBalance(ctx context.Context, address string) (int64, erro
 }
 
 func (c *RPCClient) TriggerConstantContract(ctx context.Context, contractAddress, functionSelector, parameter, ownerAddress string) (json.RawMessage, error) {
-	log := c.log
-
 	log.Debug("[RPCClient.TriggerConstantContract] calling wallet/triggerconstantcontract",
 		"contract_address", contractAddress,
 		"function_selector", functionSelector,
@@ -274,8 +265,6 @@ func (c *RPCClient) TriggerConstantContract(ctx context.Context, contractAddress
 }
 
 func (c *RPCClient) GetTransactionInfoById(ctx context.Context, txID string) (json.RawMessage, error) {
-	log := c.log
-
 	log.Debug("[RPCClient.GetTransactionInfoById] calling wallet/gettransactioninfobyid",
 		"tx_id", txID,
 	)
@@ -300,8 +289,6 @@ func (c *RPCClient) GetTransactionInfoById(ctx context.Context, txID string) (js
 }
 
 func (c *RPCClient) GetContract(ctx context.Context, contractAddress string) (json.RawMessage, error) {
-	log := c.log
-
 	log.Debug("[RPCClient.GetContract] calling wallet/getcontract",
 		"contract_address", contractAddress,
 	)
@@ -327,8 +314,6 @@ func (c *RPCClient) GetContract(ctx context.Context, contractAddress string) (js
 }
 
 func (c *RPCClient) Call(ctx context.Context, path string, params json.RawMessage) (json.RawMessage, error) {
-	log := c.log
-
 	log.Debug("[RPCClient.Call] calling RPC",
 		"path", path,
 		"params_length", len(params),
@@ -349,4 +334,395 @@ func (c *RPCClient) Call(ctx context.Context, path string, params json.RawMessag
 	)
 
 	return result, nil
+}
+
+func (c *RPCClient) BroadcastTransaction(ctx context.Context, transactionHex string) (bool, error) {
+	log.Debug("[RPCClient.BroadcastTransaction] broadcasting transaction",
+		"transaction_hex_length", len(transactionHex),
+	)
+
+	txData, err := hex.DecodeString(transactionHex)
+	if err != nil {
+		log.Error("[RPCClient.BroadcastTransaction] failed to decode transaction hex",
+			"error", err,
+		)
+		return false, fmt.Errorf("failed to decode transaction hex: %w", err)
+	}
+
+	// Decode the protobuf transaction to extract raw_data JSON and signatures
+	rawDataJSON, signatureBytes, err := decodeSignedTransaction(txData)
+	if err != nil {
+		log.Error("[RPCClient.BroadcastTransaction] failed to decode transaction",
+			"error", err,
+		)
+		return false, fmt.Errorf("failed to decode transaction: %w", err)
+	}
+
+	log.Debug("[RPCClient.BroadcastTransaction] transaction decoded",
+		"raw_data_json_length", len(rawDataJSON),
+		"signature_count", len(signatureBytes),
+	)
+
+	// Convert signatures to hex strings
+	signatures := make([]string, len(signatureBytes))
+	for i, sig := range signatureBytes {
+		signatures[i] = hex.EncodeToString(sig)
+	}
+
+	// Parse raw_data JSON
+	var rawData map[string]interface{}
+	if err := json.Unmarshal(rawDataJSON, &rawData); err != nil {
+		log.Error("[RPCClient.BroadcastTransaction] failed to parse raw_data JSON",
+			"error", err,
+		)
+		return false, fmt.Errorf("failed to parse raw_data JSON: %w", err)
+	}
+
+	// Build the broadcast request with correct format per TRON API:
+	// - raw_data: JSON object (NOT hex string)
+	// - signature: array of hex strings
+	args := map[string]interface{}{
+		"raw_data":  rawData,
+		"signature": signatures,
+	}
+
+	result, err := c.call(ctx, "wallet/broadcasttransaction", args)
+	if err != nil {
+		log.Error("[RPCClient.BroadcastTransaction] broadcast failed",
+			"error", err,
+		)
+		return false, err
+	}
+
+	type broadcastResponse struct {
+		Result  bool   `json:"result"`
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
+
+	var resp broadcastResponse
+	if err := json.Unmarshal(result, &resp); err != nil {
+		log.Error("[RPCClient.BroadcastTransaction] failed to unmarshal response",
+			"raw_result", string(result),
+			"error", err,
+		)
+		return false, fmt.Errorf("failed to unmarshal broadcast response: %w", err)
+	}
+
+	log.Info("[RPCClient.BroadcastTransaction] broadcast result",
+		"success", resp.Result,
+		"code", resp.Code,
+		"message", resp.Message,
+	)
+
+	return resp.Result, nil
+}
+
+// BroadcastTransactionWithSignature broadcasts a transaction by assembling raw_data and signature
+func (c *RPCClient) BroadcastTransactionWithSignature(ctx context.Context, rawDataHex, signatureHex string) (bool, error) {
+	log.Debug("[RPCClient.BroadcastTransactionWithSignature] assembling and broadcasting",
+		"raw_data_hex_length", len(rawDataHex),
+		"signature_hex_length", len(signatureHex),
+	)
+
+	// Decode raw_data from hex
+	rawDataBytes, err := hex.DecodeString(rawDataHex)
+	if err != nil {
+		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to decode raw_data hex",
+			"error", err,
+		)
+		return false, fmt.Errorf("failed to decode raw_data hex: %w", err)
+	}
+
+	// Decode signature from hex
+	signatureBytes, err := hex.DecodeString(signatureHex)
+	if err != nil {
+		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to decode signature hex",
+			"error", err,
+		)
+		return false, fmt.Errorf("failed to decode signature hex: %w", err)
+	}
+
+	// Convert raw_data bytes to JSON
+	rawDataJSON, err := decodeRawDataToJSON(rawDataBytes)
+	if err != nil {
+		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to decode raw_data to JSON",
+			"error", err,
+		)
+		return false, fmt.Errorf("failed to decode raw_data to JSON: %w", err)
+	}
+
+	// Parse raw_data JSON
+	var rawData map[string]interface{}
+	if err := json.Unmarshal(rawDataJSON, &rawData); err != nil {
+		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to parse raw_data JSON",
+			"error", err,
+		)
+		return false, fmt.Errorf("failed to parse raw_data JSON: %w", err)
+	}
+
+	// Build the broadcast request
+	args := map[string]interface{}{
+		"raw_data":  rawData,
+		"signature": []string{hex.EncodeToString(signatureBytes)},
+	}
+
+	return c.broadcast(ctx, args)
+}
+
+// broadcast sends the transaction to the TRON network
+func (c *RPCClient) broadcast(ctx context.Context, args map[string]interface{}) (bool, error) {
+	result, err := c.call(ctx, "wallet/broadcasttransaction", args)
+	if err != nil {
+		log.Error("[RPCClient.broadcast] broadcast failed",
+			"error", err,
+		)
+		return false, err
+	}
+
+	type broadcastResponse struct {
+		Result  bool   `json:"result"`
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
+
+	var resp broadcastResponse
+	if err := json.Unmarshal(result, &resp); err != nil {
+		log.Error("[RPCClient.broadcast] failed to unmarshal response",
+			"raw_result", string(result),
+			"error", err,
+		)
+		return false, fmt.Errorf("failed to unmarshal broadcast response: %w", err)
+	}
+
+	log.Info("[RPCClient.broadcast] broadcast result",
+		"success", resp.Result,
+		"code", resp.Code,
+		"message", resp.Message,
+	)
+
+	return resp.Result, nil
+}
+
+// decodeSignedTransaction extracts raw_data JSON and signatures from a protobuf signed transaction
+func decodeSignedTransaction(data []byte) ([]byte, [][]byte, error) {
+	var rawDataBytes []byte
+	var signatureBytes [][]byte
+
+	pos := 0
+	for pos < len(data) {
+		fieldTag := data[pos]
+		pos++
+		fieldNum := int(fieldTag >> 3)
+		wireType := fieldTag & 0x07
+
+		switch wireType {
+		case 0:
+			_, consumed := decodeVarint(data[pos:])
+			pos += consumed
+		case 2:
+			length, consumed := decodeVarint(data[pos:])
+			pos += consumed
+			content := data[pos : pos+length]
+			pos += length
+
+			switch fieldNum {
+			case 1:
+				rawDataBytes = content
+			case 2:
+				signatureBytes = append(signatureBytes, content)
+			}
+		default:
+			return nil, nil, fmt.Errorf("unsupported wire type: %d", wireType)
+		}
+	}
+
+	if rawDataBytes == nil {
+		return nil, nil, fmt.Errorf("no raw_data found in transaction")
+	}
+
+	// Decode raw_data from protobuf bytes to JSON
+	rawDataJSON, err := decodeRawDataToJSON(rawDataBytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decode raw_data to JSON: %w", err)
+	}
+
+	return rawDataJSON, signatureBytes, nil
+}
+
+// func decodeTransactionToJSON(data []byte) ([]byte, error) {
+// 	tx := make(map[string]interface{})
+// 	tx["visible"] = false
+
+// 	var rawDataBytes []byte
+// 	var signatureBytes [][]byte
+
+// 	pos := 0
+// 	for pos < len(data) {
+// 		fieldTag := data[pos]
+// 		pos++
+// 		fieldNum := int(fieldTag >> 3)
+// 		wireType := fieldTag & 0x07
+
+// 		switch wireType {
+// 		case 0:
+// 			_, consumed := decodeVarint(data[pos:])
+// 			pos += consumed
+// 		case 2:
+// 			length, consumed := decodeVarint(data[pos:])
+// 			pos += consumed
+// 			content := data[pos : pos+length]
+// 			pos += length
+
+// 			switch fieldNum {
+// 			case 1:
+// 				rawDataBytes = content
+// 			case 2:
+// 				signatureBytes = append(signatureBytes, content)
+// 			}
+// 		default:
+// 			return nil, fmt.Errorf("unsupported wire type: %d", wireType)
+// 		}
+// 	}
+
+// 	if rawDataBytes == nil {
+// 		return nil, fmt.Errorf("no raw_data found in transaction")
+// 	}
+
+// 	rawData, err := decodeRawDataToJSON(rawDataBytes)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	tx["raw_data"] = json.RawMessage(rawData)
+// 	tx["raw_data_hex"] = hex.EncodeToString(rawDataBytes)
+
+// 	txID := sha256.Sum256(rawDataBytes)
+// 	tx["txID"] = hex.EncodeToString(txID[:])
+
+// 	if len(signatureBytes) > 0 {
+// 		signatures := make([]string, len(signatureBytes))
+// 		for i, sig := range signatureBytes {
+// 			signatures[i] = hex.EncodeToString(sig)
+// 		}
+// 		tx["signature"] = signatures
+// 	}
+
+// 	return json.Marshal(tx)
+// }
+
+func decodeRawDataToJSON(data []byte) ([]byte, error) {
+	rawData := make(map[string]interface{})
+	contracts := []interface{}{}
+
+	pos := 0
+	for pos < len(data) {
+		fieldTag := data[pos]
+		pos++
+		fieldNum := int(fieldTag >> 3)
+		wireType := fieldTag & 0x07
+
+		switch wireType {
+		case 0:
+			val, consumed := decodeVarint(data[pos:])
+			pos += consumed
+			switch fieldNum {
+			case 2:
+				rawData["ref_block_num"] = val
+			case 8:
+				rawData["expiration"] = val
+			case 9:
+				rawData["timestamp"] = val
+			case 14:
+				rawData["timestamp"] = val
+			}
+		case 2:
+			length, consumed := decodeVarint(data[pos:])
+			pos += consumed
+			content := data[pos : pos+length]
+			pos += length
+
+			switch fieldNum {
+			case 1:
+				rawData["ref_block_bytes"] = hex.EncodeToString(content)
+			case 3:
+				rawData["ref_block_hash"] = hex.EncodeToString(content)
+			case 4:
+				rawData["ref_block_hash"] = hex.EncodeToString(content)
+			case 10, 11:
+				contract, err := decodeContractToJSON(content)
+				if err != nil {
+					return nil, err
+				}
+				contracts = append(contracts, json.RawMessage(contract))
+			}
+		default:
+			return nil, fmt.Errorf("unsupported wire type: %d", wireType)
+		}
+	}
+
+	if len(contracts) > 0 {
+		rawData["contract"] = contracts
+	}
+
+	return json.Marshal(rawData)
+}
+
+func decodeContractToJSON(data []byte) ([]byte, error) {
+	contract := make(map[string]interface{})
+	var paramValue []byte
+	var paramType string
+
+	pos := 0
+	for pos < len(data) {
+		fieldTag := data[pos]
+		pos++
+		fieldNum := int(fieldTag >> 3)
+		wireType := fieldTag & 0x07
+
+		switch wireType {
+		case 0:
+			val, consumed := decodeVarint(data[pos:])
+			pos += consumed
+			switch fieldNum {
+			case 5:
+				contract["call_value"] = val
+			}
+		case 2:
+			length, consumed := decodeVarint(data[pos:])
+			pos += consumed
+			content := data[pos : pos+length]
+			pos += length
+
+			switch fieldNum {
+			case 1:
+				paramType = string(content)
+				contract["type"] = paramType
+			case 2:
+				paramValue = content
+			}
+		}
+	}
+
+	if paramValue != nil {
+		typeURL := "type.googleapis.com/protocol." + paramType
+		contract["parameter"] = map[string]interface{}{
+			"type_url": typeURL,
+			"value":    hex.EncodeToString(paramValue),
+		}
+	}
+
+	return json.Marshal(contract)
+}
+
+func decodeVarint(data []byte) (int, int) {
+	result := 0
+	shift := 0
+	for i, b := range data {
+		if b < 0x80 {
+			return result | int(b)<<shift, i + 1
+		}
+		result |= int(b&0x7f) << shift
+		shift += 7
+	}
+	return result, len(data)
 }

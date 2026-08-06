@@ -5,13 +5,13 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-	logko "github.com/koku-web3/logko"
 )
 
 type Config struct {
 	Chain ChainConfig `toml:"chain"`
 	GRPC  GRPCConfig  `toml:"grpc"`
 	Log   LogConfig   `toml:"log"`
+	Path  string
 }
 
 type ChainConfig struct {
@@ -44,18 +44,19 @@ var (
 	cfg *Config
 )
 
-func LoadConfig(path string) error {
+func LoadConfig(path string) (*Config, error) {
 	configData, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	cfg = &Config{}
 	if err := toml.Unmarshal(configData, cfg); err != nil {
-		return fmt.Errorf("failed to unmarshal config: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
+	cfg.Path = path
 
-	return nil
+	return cfg, nil
 }
 
 func GetConfig() *Config {
@@ -64,43 +65,4 @@ func GetConfig() *Config {
 
 func SetConfigForTest(c *Config) {
 	cfg = c
-}
-
-func InitLogger() error {
-	logConfig := GetConfig().Log
-
-	var opts []logko.Option
-	if logConfig.Rotation {
-		opts = append(opts, logko.WithRotation())
-	}
-	if logConfig.FilePath != "" {
-		opts = append(opts, logko.WithFilePath(logConfig.FilePath))
-	}
-	if logConfig.MaxSizeMB > 0 {
-		opts = append(opts, logko.WithMaxSizeMB(logConfig.MaxSizeMB))
-	}
-	if logConfig.MaxBackups > 0 {
-		opts = append(opts, logko.WithMaxBackups(logConfig.MaxBackups))
-	}
-	if logConfig.MaxAge > 0 {
-		opts = append(opts, logko.WithMaxAge(logConfig.MaxAge))
-	}
-	if logConfig.Compress {
-		opts = append(opts, logko.WithCompress())
-	}
-	if logConfig.Format != "" {
-		opts = append(opts, logko.WithFormat(logConfig.Format))
-	}
-	if logConfig.Verbosity > 0 {
-		opts = append(opts, logko.WithVerbosity(logConfig.Verbosity))
-	}
-	if logConfig.VModule != "" {
-		opts = append(opts, logko.WithVmodule(logConfig.VModule))
-	}
-
-	return logko.Setup(nil, opts...)
-}
-
-func GetLogger() logko.Logger {
-	return logko.Root()
 }

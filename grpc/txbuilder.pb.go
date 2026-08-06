@@ -2,16 +2,17 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v6.33.1
-// source: api/txbuilder.proto
+// source: grpc/txbuilder.proto
 
-package api
+package grpc
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -31,7 +32,7 @@ type RequestWithTraceId struct {
 
 func (x *RequestWithTraceId) Reset() {
 	*x = RequestWithTraceId{}
-	mi := &file_api_txbuilder_proto_msgTypes[0]
+	mi := &file_grpc_txbuilder_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -43,7 +44,7 @@ func (x *RequestWithTraceId) String() string {
 func (*RequestWithTraceId) ProtoMessage() {}
 
 func (x *RequestWithTraceId) ProtoReflect() protoreflect.Message {
-	mi := &file_api_txbuilder_proto_msgTypes[0]
+	mi := &file_grpc_txbuilder_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -56,7 +57,7 @@ func (x *RequestWithTraceId) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestWithTraceId.ProtoReflect.Descriptor instead.
 func (*RequestWithTraceId) Descriptor() ([]byte, []int) {
-	return file_api_txbuilder_proto_rawDescGZIP(), []int{0}
+	return file_grpc_txbuilder_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *RequestWithTraceId) GetTraceId() string {
@@ -77,7 +78,7 @@ type VerifyAddressRequest struct {
 
 func (x *VerifyAddressRequest) Reset() {
 	*x = VerifyAddressRequest{}
-	mi := &file_api_txbuilder_proto_msgTypes[1]
+	mi := &file_grpc_txbuilder_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -89,7 +90,7 @@ func (x *VerifyAddressRequest) String() string {
 func (*VerifyAddressRequest) ProtoMessage() {}
 
 func (x *VerifyAddressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_txbuilder_proto_msgTypes[1]
+	mi := &file_grpc_txbuilder_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -102,7 +103,7 @@ func (x *VerifyAddressRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyAddressRequest.ProtoReflect.Descriptor instead.
 func (*VerifyAddressRequest) Descriptor() ([]byte, []int) {
-	return file_api_txbuilder_proto_rawDescGZIP(), []int{1}
+	return file_grpc_txbuilder_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *VerifyAddressRequest) GetTraceId() string {
@@ -128,7 +129,7 @@ type VerifyAddressResponse struct {
 
 func (x *VerifyAddressResponse) Reset() {
 	*x = VerifyAddressResponse{}
-	mi := &file_api_txbuilder_proto_msgTypes[2]
+	mi := &file_grpc_txbuilder_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -140,7 +141,7 @@ func (x *VerifyAddressResponse) String() string {
 func (*VerifyAddressResponse) ProtoMessage() {}
 
 func (x *VerifyAddressResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_txbuilder_proto_msgTypes[2]
+	mi := &file_grpc_txbuilder_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -153,7 +154,7 @@ func (x *VerifyAddressResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyAddressResponse.ProtoReflect.Descriptor instead.
 func (*VerifyAddressResponse) Descriptor() ([]byte, []int) {
-	return file_api_txbuilder_proto_rawDescGZIP(), []int{2}
+	return file_grpc_txbuilder_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *VerifyAddressResponse) GetIsValid() bool {
@@ -174,7 +175,7 @@ type VerifyContractAddressRequest struct {
 
 func (x *VerifyContractAddressRequest) Reset() {
 	*x = VerifyContractAddressRequest{}
-	mi := &file_api_txbuilder_proto_msgTypes[3]
+	mi := &file_grpc_txbuilder_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -186,7 +187,7 @@ func (x *VerifyContractAddressRequest) String() string {
 func (*VerifyContractAddressRequest) ProtoMessage() {}
 
 func (x *VerifyContractAddressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_txbuilder_proto_msgTypes[3]
+	mi := &file_grpc_txbuilder_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -199,7 +200,7 @@ func (x *VerifyContractAddressRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyContractAddressRequest.ProtoReflect.Descriptor instead.
 func (*VerifyContractAddressRequest) Descriptor() ([]byte, []int) {
-	return file_api_txbuilder_proto_rawDescGZIP(), []int{3}
+	return file_grpc_txbuilder_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *VerifyContractAddressRequest) GetTraceId() string {
@@ -225,7 +226,7 @@ type VerifyContractAddressResponse struct {
 
 func (x *VerifyContractAddressResponse) Reset() {
 	*x = VerifyContractAddressResponse{}
-	mi := &file_api_txbuilder_proto_msgTypes[4]
+	mi := &file_grpc_txbuilder_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -237,7 +238,7 @@ func (x *VerifyContractAddressResponse) String() string {
 func (*VerifyContractAddressResponse) ProtoMessage() {}
 
 func (x *VerifyContractAddressResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_txbuilder_proto_msgTypes[4]
+	mi := &file_grpc_txbuilder_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -250,7 +251,7 @@ func (x *VerifyContractAddressResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyContractAddressResponse.ProtoReflect.Descriptor instead.
 func (*VerifyContractAddressResponse) Descriptor() ([]byte, []int) {
-	return file_api_txbuilder_proto_rawDescGZIP(), []int{4}
+	return file_grpc_txbuilder_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *VerifyContractAddressResponse) GetIsValid() bool {
@@ -276,7 +277,7 @@ type CheckSufficientBalanceRequest struct {
 
 func (x *CheckSufficientBalanceRequest) Reset() {
 	*x = CheckSufficientBalanceRequest{}
-	mi := &file_api_txbuilder_proto_msgTypes[5]
+	mi := &file_grpc_txbuilder_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -288,7 +289,7 @@ func (x *CheckSufficientBalanceRequest) String() string {
 func (*CheckSufficientBalanceRequest) ProtoMessage() {}
 
 func (x *CheckSufficientBalanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_txbuilder_proto_msgTypes[5]
+	mi := &file_grpc_txbuilder_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -301,7 +302,7 @@ func (x *CheckSufficientBalanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckSufficientBalanceRequest.ProtoReflect.Descriptor instead.
 func (*CheckSufficientBalanceRequest) Descriptor() ([]byte, []int) {
-	return file_api_txbuilder_proto_rawDescGZIP(), []int{5}
+	return file_grpc_txbuilder_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CheckSufficientBalanceRequest) GetTraceId() string {
@@ -362,7 +363,7 @@ type CheckSufficientBalanceResponse struct {
 
 func (x *CheckSufficientBalanceResponse) Reset() {
 	*x = CheckSufficientBalanceResponse{}
-	mi := &file_api_txbuilder_proto_msgTypes[6]
+	mi := &file_grpc_txbuilder_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -374,7 +375,7 @@ func (x *CheckSufficientBalanceResponse) String() string {
 func (*CheckSufficientBalanceResponse) ProtoMessage() {}
 
 func (x *CheckSufficientBalanceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_txbuilder_proto_msgTypes[6]
+	mi := &file_grpc_txbuilder_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -387,7 +388,7 @@ func (x *CheckSufficientBalanceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckSufficientBalanceResponse.ProtoReflect.Descriptor instead.
 func (*CheckSufficientBalanceResponse) Descriptor() ([]byte, []int) {
-	return file_api_txbuilder_proto_rawDescGZIP(), []int{6}
+	return file_grpc_txbuilder_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CheckSufficientBalanceResponse) GetIsSufficient() bool {
@@ -415,7 +416,7 @@ type BuildSignRawDataRequest struct {
 
 func (x *BuildSignRawDataRequest) Reset() {
 	*x = BuildSignRawDataRequest{}
-	mi := &file_api_txbuilder_proto_msgTypes[7]
+	mi := &file_grpc_txbuilder_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -427,7 +428,7 @@ func (x *BuildSignRawDataRequest) String() string {
 func (*BuildSignRawDataRequest) ProtoMessage() {}
 
 func (x *BuildSignRawDataRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_txbuilder_proto_msgTypes[7]
+	mi := &file_grpc_txbuilder_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -440,7 +441,7 @@ func (x *BuildSignRawDataRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BuildSignRawDataRequest.ProtoReflect.Descriptor instead.
 func (*BuildSignRawDataRequest) Descriptor() ([]byte, []int) {
-	return file_api_txbuilder_proto_rawDescGZIP(), []int{7}
+	return file_grpc_txbuilder_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *BuildSignRawDataRequest) GetBizId() string {
@@ -509,13 +510,14 @@ func (x *BuildSignRawDataRequest) GetContract() string {
 type BuildSignRawDataResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Msg           string                 `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
+	RawData       string                 `protobuf:"bytes,2,opt,name=raw_data,json=rawData,proto3" json:"raw_data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *BuildSignRawDataResponse) Reset() {
 	*x = BuildSignRawDataResponse{}
-	mi := &file_api_txbuilder_proto_msgTypes[8]
+	mi := &file_grpc_txbuilder_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -527,7 +529,7 @@ func (x *BuildSignRawDataResponse) String() string {
 func (*BuildSignRawDataResponse) ProtoMessage() {}
 
 func (x *BuildSignRawDataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_txbuilder_proto_msgTypes[8]
+	mi := &file_grpc_txbuilder_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -540,7 +542,7 @@ func (x *BuildSignRawDataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BuildSignRawDataResponse.ProtoReflect.Descriptor instead.
 func (*BuildSignRawDataResponse) Descriptor() ([]byte, []int) {
-	return file_api_txbuilder_proto_rawDescGZIP(), []int{8}
+	return file_grpc_txbuilder_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *BuildSignRawDataResponse) GetMsg() string {
@@ -550,11 +552,123 @@ func (x *BuildSignRawDataResponse) GetMsg() string {
 	return ""
 }
 
-var File_api_txbuilder_proto protoreflect.FileDescriptor
+func (x *BuildSignRawDataResponse) GetRawData() string {
+	if x != nil {
+		return x.RawData
+	}
+	return ""
+}
 
-const file_api_txbuilder_proto_rawDesc = "" +
+// TxBroadcast
+type TxBroadcastRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TraceId       string                 `protobuf:"bytes,1,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	RawData       string                 `protobuf:"bytes,2,opt,name=raw_data,json=rawData,proto3" json:"raw_data,omitempty"`
+	Signature     string                 `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TxBroadcastRequest) Reset() {
+	*x = TxBroadcastRequest{}
+	mi := &file_grpc_txbuilder_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TxBroadcastRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TxBroadcastRequest) ProtoMessage() {}
+
+func (x *TxBroadcastRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_grpc_txbuilder_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TxBroadcastRequest.ProtoReflect.Descriptor instead.
+func (*TxBroadcastRequest) Descriptor() ([]byte, []int) {
+	return file_grpc_txbuilder_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *TxBroadcastRequest) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
+}
+
+func (x *TxBroadcastRequest) GetRawData() string {
+	if x != nil {
+		return x.RawData
+	}
+	return ""
+}
+
+func (x *TxBroadcastRequest) GetSignature() string {
+	if x != nil {
+		return x.Signature
+	}
+	return ""
+}
+
+type TxBroadcastResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TxBroadcastResponse) Reset() {
+	*x = TxBroadcastResponse{}
+	mi := &file_grpc_txbuilder_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TxBroadcastResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TxBroadcastResponse) ProtoMessage() {}
+
+func (x *TxBroadcastResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_grpc_txbuilder_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TxBroadcastResponse.ProtoReflect.Descriptor instead.
+func (*TxBroadcastResponse) Descriptor() ([]byte, []int) {
+	return file_grpc_txbuilder_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *TxBroadcastResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+var File_grpc_txbuilder_proto protoreflect.FileDescriptor
+
+const file_grpc_txbuilder_proto_rawDesc = "" +
 	"\n" +
-	"\x13api/txbuilder.proto\x12\x03api\"/\n" +
+	"\x14grpc/txbuilder.proto\x12\x05chain\"/\n" +
 	"\x12RequestWithTraceId\x12\x19\n" +
 	"\btrace_id\x18\x01 \x01(\tR\atraceId\"K\n" +
 	"\x14VerifyAddressRequest\x12\x19\n" +
@@ -590,73 +704,83 @@ const file_api_txbuilder_proto_rawDesc = "" +
 	"\x06amount\x18\b \x01(\tR\x06amount\x12\x1a\n" +
 	"\bcontract\x18\t \x01(\tR\bcontract\",\n" +
 	"\x18BuildSignRawDataResponse\x12\x10\n" +
-	"\x03msg\x18\x01 \x01(\tR\x03msg2\xe7\x02\n" +
-	"\tTxBuilder\x12F\n" +
-	"\rVerifyAddress\x12\x19.api.VerifyAddressRequest\x1a\x1a.api.VerifyAddressResponse\x12^\n" +
-	"\x15VerifyContractAddress\x12!.api.VerifyContractAddressRequest\x1a\".api.VerifyContractAddressResponse\x12a\n" +
-	"\x16CheckSufficientBalance\x12\".api.CheckSufficientBalanceRequest\x1a#.api.CheckSufficientBalanceResponse\x12O\n" +
-	"\x10BuildSignRawData\x12\x1c.api.BuildSignRawDataRequest\x1a\x1d.api.BuildSignRawDataResponseB)Z'github.com/koku-web3/txbuilder-tron/apib\x06proto3"
+	"\x03msg\x18\x01 \x01(\tR\x03msg\"I\n" +
+	"\x12TxBroadcastRequest\x12\x19\n" +
+	"\btrace_id\x18\x01 \x01(\tR\atraceId\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"/\n" +
+	"\x13TxBroadcastResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess2\xbd\x03\n" +
+	"\tTxBuilder\x12J\n" +
+	"\rVerifyAddress\x12\x1b.chain.VerifyAddressRequest\x1a\x1c.chain.VerifyAddressResponse\x12b\n" +
+	"\x15VerifyContractAddress\x12#.chain.VerifyContractAddressRequest\x1a$.chain.VerifyContractAddressResponse\x12e\n" +
+	"\x16CheckSufficientBalance\x12$.chain.CheckSufficientBalanceRequest\x1a%.chain.CheckSufficientBalanceResponse\x12S\n" +
+	"\x10BuildSignRawData\x12\x1e.chain.BuildSignRawDataRequest\x1a\x1f.chain.BuildSignRawDataResponse\x12D\n" +
+	"\vTxBroadcast\x12\x19.chain.TxBroadcastRequest\x1a\x1a.chain.TxBroadcastResponseB/Z-github.com/koku-web3/txbuilder-tron/grpc;grpcb\x06proto3"
 
 var (
-	file_api_txbuilder_proto_rawDescOnce sync.Once
-	file_api_txbuilder_proto_rawDescData []byte
+	file_grpc_txbuilder_proto_rawDescOnce sync.Once
+	file_grpc_txbuilder_proto_rawDescData []byte
 )
 
-func file_api_txbuilder_proto_rawDescGZIP() []byte {
-	file_api_txbuilder_proto_rawDescOnce.Do(func() {
-		file_api_txbuilder_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_txbuilder_proto_rawDesc), len(file_api_txbuilder_proto_rawDesc)))
+func file_grpc_txbuilder_proto_rawDescGZIP() []byte {
+	file_grpc_txbuilder_proto_rawDescOnce.Do(func() {
+		file_grpc_txbuilder_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_grpc_txbuilder_proto_rawDesc), len(file_grpc_txbuilder_proto_rawDesc)))
 	})
-	return file_api_txbuilder_proto_rawDescData
+	return file_grpc_txbuilder_proto_rawDescData
 }
 
-var file_api_txbuilder_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
-var file_api_txbuilder_proto_goTypes = []any{
-	(*RequestWithTraceId)(nil),             // 0: api.RequestWithTraceId
-	(*VerifyAddressRequest)(nil),           // 1: api.VerifyAddressRequest
-	(*VerifyAddressResponse)(nil),          // 2: api.VerifyAddressResponse
-	(*VerifyContractAddressRequest)(nil),   // 3: api.VerifyContractAddressRequest
-	(*VerifyContractAddressResponse)(nil),  // 4: api.VerifyContractAddressResponse
-	(*CheckSufficientBalanceRequest)(nil),  // 5: api.CheckSufficientBalanceRequest
-	(*CheckSufficientBalanceResponse)(nil), // 6: api.CheckSufficientBalanceResponse
-	(*BuildSignRawDataRequest)(nil),        // 7: api.BuildSignRawDataRequest
-	(*BuildSignRawDataResponse)(nil),       // 8: api.BuildSignRawDataResponse
+var file_grpc_txbuilder_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_grpc_txbuilder_proto_goTypes = []any{
+	(*RequestWithTraceId)(nil),             // 0: chain.RequestWithTraceId
+	(*VerifyAddressRequest)(nil),           // 1: chain.VerifyAddressRequest
+	(*VerifyAddressResponse)(nil),          // 2: chain.VerifyAddressResponse
+	(*VerifyContractAddressRequest)(nil),   // 3: chain.VerifyContractAddressRequest
+	(*VerifyContractAddressResponse)(nil),  // 4: chain.VerifyContractAddressResponse
+	(*CheckSufficientBalanceRequest)(nil),  // 5: chain.CheckSufficientBalanceRequest
+	(*CheckSufficientBalanceResponse)(nil), // 6: chain.CheckSufficientBalanceResponse
+	(*BuildSignRawDataRequest)(nil),        // 7: chain.BuildSignRawDataRequest
+	(*BuildSignRawDataResponse)(nil),       // 8: chain.BuildSignRawDataResponse
+	(*TxBroadcastRequest)(nil),             // 9: chain.TxBroadcastRequest
+	(*TxBroadcastResponse)(nil),            // 10: chain.TxBroadcastResponse
 }
-var file_api_txbuilder_proto_depIdxs = []int32{
-	1, // 0: api.TxBuilder.VerifyAddress:input_type -> api.VerifyAddressRequest
-	3, // 1: api.TxBuilder.VerifyContractAddress:input_type -> api.VerifyContractAddressRequest
-	5, // 2: api.TxBuilder.CheckSufficientBalance:input_type -> api.CheckSufficientBalanceRequest
-	7, // 3: api.TxBuilder.BuildSignRawData:input_type -> api.BuildSignRawDataRequest
-	2, // 4: api.TxBuilder.VerifyAddress:output_type -> api.VerifyAddressResponse
-	4, // 5: api.TxBuilder.VerifyContractAddress:output_type -> api.VerifyContractAddressResponse
-	6, // 6: api.TxBuilder.CheckSufficientBalance:output_type -> api.CheckSufficientBalanceResponse
-	8, // 7: api.TxBuilder.BuildSignRawData:output_type -> api.BuildSignRawDataResponse
-	4, // [4:8] is the sub-list for method output_type
-	0, // [0:4] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+var file_grpc_txbuilder_proto_depIdxs = []int32{
+	1,  // 0: chain.TxBuilder.VerifyAddress:input_type -> chain.VerifyAddressRequest
+	3,  // 1: chain.TxBuilder.VerifyContractAddress:input_type -> chain.VerifyContractAddressRequest
+	5,  // 2: chain.TxBuilder.CheckSufficientBalance:input_type -> chain.CheckSufficientBalanceRequest
+	7,  // 3: chain.TxBuilder.BuildSignRawData:input_type -> chain.BuildSignRawDataRequest
+	9,  // 4: chain.TxBuilder.TxBroadcast:input_type -> chain.TxBroadcastRequest
+	2,  // 5: chain.TxBuilder.VerifyAddress:output_type -> chain.VerifyAddressResponse
+	4,  // 6: chain.TxBuilder.VerifyContractAddress:output_type -> chain.VerifyContractAddressResponse
+	6,  // 7: chain.TxBuilder.CheckSufficientBalance:output_type -> chain.CheckSufficientBalanceResponse
+	8,  // 8: chain.TxBuilder.BuildSignRawData:output_type -> chain.BuildSignRawDataResponse
+	10, // 9: chain.TxBuilder.TxBroadcast:output_type -> chain.TxBroadcastResponse
+	5,  // [5:10] is the sub-list for method output_type
+	0,  // [0:5] is the sub-list for method input_type
+	0,  // [0:0] is the sub-list for extension type_name
+	0,  // [0:0] is the sub-list for extension extendee
+	0,  // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_api_txbuilder_proto_init() }
-func file_api_txbuilder_proto_init() {
-	if File_api_txbuilder_proto != nil {
+func init() { file_grpc_txbuilder_proto_init() }
+func file_grpc_txbuilder_proto_init() {
+	if File_grpc_txbuilder_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_txbuilder_proto_rawDesc), len(file_api_txbuilder_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_grpc_txbuilder_proto_rawDesc), len(file_grpc_txbuilder_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_api_txbuilder_proto_goTypes,
-		DependencyIndexes: file_api_txbuilder_proto_depIdxs,
-		MessageInfos:      file_api_txbuilder_proto_msgTypes,
+		GoTypes:           file_grpc_txbuilder_proto_goTypes,
+		DependencyIndexes: file_grpc_txbuilder_proto_depIdxs,
+		MessageInfos:      file_grpc_txbuilder_proto_msgTypes,
 	}.Build()
-	File_api_txbuilder_proto = out.File
-	file_api_txbuilder_proto_goTypes = nil
-	file_api_txbuilder_proto_depIdxs = nil
+	File_grpc_txbuilder_proto = out.File
+	file_grpc_txbuilder_proto_goTypes = nil
+	file_grpc_txbuilder_proto_depIdxs = nil
 }

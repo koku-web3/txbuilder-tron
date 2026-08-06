@@ -6,45 +6,80 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"net"
 	"strings"
 
-	"github.com/koku-web3/logko"
-	"github.com/koku-web3/txbuilder-tron/api"
-	"github.com/koku-web3/txbuilder-tron/internal/config"
+	log "github.com/koku-web3/logko"
+	"github.com/koku-web3/txbuilder-tron/grpc"
 	"github.com/koku-web3/txbuilder-tron/internal/tron"
 	"github.com/pkg/errors"
+	ggrpc "google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
 
 type TxBuilderService struct {
-	api.UnimplementedTxBuilderServer
-	log logko.Logger
+	grpc.UnimplementedTxBuilderServer
 	rpc *tron.RPCClient
+}
+
+type GRPCServer struct {
+	grpcSrv *ggrpc.Server
+	host    string
+	port    int
 }
 
 func NewTxBuilderService() *TxBuilderService {
 	return &TxBuilderService{
-		log: config.GetLogger(),
 		rpc: tron.NewRPCClient(),
 	}
 }
 
+func NewGRPCServer(host string, port int) *GRPCServer {
+	return &GRPCServer{
+		host: host,
+		port: port,
+	}
+}
+
+func (s *GRPCServer) Start(ctx context.Context) error {
+	addr := fmt.Sprintf("%s:%d", s.host, s.port)
+	lis, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("failed to listen: %w", err)
+	}
+
+	s.grpcSrv = ggrpc.NewServer()
+	grpc.RegisterTxBuilderServer(s.grpcSrv, NewTxBuilderService())
+	reflection.Register(s.grpcSrv)
+
+	log.Info("Starting gRPC server", "address", addr)
+
+	go func() {
+		<-ctx.Done()
+		log.Info("Shutting down gRPC server")
+		s.grpcSrv.GracefulStop()
+	}()
+
+	return s.grpcSrv.Serve(lis)
+}
+
 func (s *TxBuilderService) verifyAddress(ctx context.Context, methodName, traceId, address string, validateFn func(string) bool) (bool, error) {
-	s.log.Info("["+methodName+"] received request",
+	log.Info("["+methodName+"] received request",
 		"trace_id", traceId,
 		"address", address,
 	)
 
 	if traceId == "" {
-		s.log.Warn("["+methodName+"] missing trace_id",
+		log.Warn("["+methodName+"] missing trace_id",
 			"trace_id", traceId,
 			"address", address,
 		)
 		return false, status.Error(codes.InvalidArgument, "trace_id is required")
 	}
 	if address == "" {
-		s.log.Warn("["+methodName+"] missing address",
+		log.Warn("["+methodName+"] missing address",
 			"trace_id", traceId,
 			"address", address,
 		)
@@ -53,7 +88,7 @@ func (s *TxBuilderService) verifyAddress(ctx context.Context, methodName, traceI
 
 	isValid := validateFn(address)
 
-	s.log.Info("["+methodName+"] returning response",
+	log.Info("["+methodName+"] returning response",
 		"trace_id", traceId,
 		"address", address,
 		"is_valid", isValid,
@@ -62,24 +97,24 @@ func (s *TxBuilderService) verifyAddress(ctx context.Context, methodName, traceI
 	return isValid, nil
 }
 
-func (s *TxBuilderService) VerifyAddress(ctx context.Context, req *api.VerifyAddressRequest) (*api.VerifyAddressResponse, error) {
+func (s *TxBuilderService) VerifyAddress(ctx context.Context, req *grpc.VerifyAddressRequest) (*grpc.VerifyAddressResponse, error) {
 	isValid, err := s.verifyAddress(ctx, "VerifyAddress", req.TraceId, req.Address, tron.ValidateAddress)
 	if err != nil {
 		return nil, err
 	}
-	return &api.VerifyAddressResponse{IsValid: isValid}, nil
+	return &grpc.VerifyAddressResponse{IsValid: isValid}, nil
 }
 
-func (s *TxBuilderService) VerifyContractAddress(ctx context.Context, req *api.VerifyContractAddressRequest) (*api.VerifyContractAddressResponse, error) {
+func (s *TxBuilderService) VerifyContractAddress(ctx context.Context, req *grpc.VerifyContractAddressRequest) (*grpc.VerifyContractAddressResponse, error) {
 	isValid, err := s.verifyAddress(ctx, "VerifyContractAddress", req.TraceId, req.Address, tron.ValidateContractAddress)
 	if err != nil {
 		return nil, err
 	}
-	return &api.VerifyContractAddressResponse{IsValid: isValid}, nil
+	return &grpc.VerifyContractAddressResponse{IsValid: isValid}, nil
 }
 
-func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.CheckSufficientBalanceRequest) (*api.CheckSufficientBalanceResponse, error) {
-	s.log.Info("[CheckSufficientBalance] received request",
+func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *grpc.CheckSufficientBalanceRequest) (*grpc.CheckSufficientBalanceResponse, error) {
+	log.Info("[CheckSufficientBalance] received request",
 		"trace_id", req.TraceId,
 		"chain_id", req.ChainId,
 		"coin_id", req.CoinId,
@@ -90,13 +125,13 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 	)
 
 	if req.TraceId == "" {
-		s.log.Warn("[CheckSufficientBalance] missing trace_id",
+		log.Warn("[CheckSufficientBalance] missing trace_id",
 			"trace_id", req.TraceId,
 		)
 		return nil, status.Error(codes.InvalidArgument, "trace_id is required")
 	}
 	if req.ChainId == "" || len(req.ChainId) > 36 {
-		s.log.Warn("[CheckSufficientBalance] invalid chain_id",
+		log.Warn("[CheckSufficientBalance] invalid chain_id",
 			"trace_id", req.TraceId,
 			"chain_id", req.ChainId,
 			"chain_id_length", len(req.ChainId),
@@ -104,7 +139,7 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 		return nil, status.Error(codes.InvalidArgument, "chain_id is required and must be 1-36 characters")
 	}
 	if req.CoinId == "" || len(req.CoinId) > 36 {
-		s.log.Warn("[CheckSufficientBalance] invalid coin_id",
+		log.Warn("[CheckSufficientBalance] invalid coin_id",
 			"trace_id", req.TraceId,
 			"coin_id", req.CoinId,
 			"coin_id_length", len(req.CoinId),
@@ -112,7 +147,7 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 		return nil, status.Error(codes.InvalidArgument, "coin_id is required and must be 1-36 characters")
 	}
 	if req.FromAddress == "" || len(req.FromAddress) > 256 {
-		s.log.Warn("[CheckSufficientBalance] invalid from_address",
+		log.Warn("[CheckSufficientBalance] invalid from_address",
 			"trace_id", req.TraceId,
 			"from_address", req.FromAddress,
 			"from_address_length", len(req.FromAddress),
@@ -120,7 +155,7 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 		return nil, status.Error(codes.InvalidArgument, "from_address is required and must be 1-256 characters")
 	}
 	if req.Amount == "" || len(req.Amount) > 64 {
-		s.log.Warn("[CheckSufficientBalance] invalid amount",
+		log.Warn("[CheckSufficientBalance] invalid amount",
 			"trace_id", req.TraceId,
 			"amount", req.Amount,
 			"amount_length", len(req.Amount),
@@ -128,7 +163,7 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 		return nil, status.Error(codes.InvalidArgument, "amount is required and must be 1-64 characters")
 	}
 	if !req.IsBasicCoin && (req.Contract == "" || len(req.Contract) > 256) {
-		s.log.Warn("[CheckSufficientBalance] missing contract for token",
+		log.Warn("[CheckSufficientBalance] missing contract for token",
 			"trace_id", req.TraceId,
 			"is_basic_coin", req.IsBasicCoin,
 			"contract", req.Contract,
@@ -136,20 +171,20 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 		return nil, status.Error(codes.InvalidArgument, "contract is required when is_basic_coin is false")
 	}
 
-	s.log.Info("[CheckSufficientBalance] validation passed, checking balance",
+	log.Info("[CheckSufficientBalance] validation passed, checking balance",
 		"trace_id", req.TraceId,
 		"is_basic_coin", req.IsBasicCoin,
 	)
 
 	if req.IsBasicCoin {
-		s.log.Info("[CheckSufficientBalance] checking basic coin (TRX) balance",
+		log.Info("[CheckSufficientBalance] checking basic coin (TRX) balance",
 			"trace_id", req.TraceId,
 			"from_address", req.FromAddress,
 		)
 
 		balance, err := s.getBasicCoinBalance(ctx, req.FromAddress)
 		if err != nil {
-			s.log.Error("[CheckSufficientBalance] failed to get basic coin balance",
+			log.Error("[CheckSufficientBalance] failed to get basic coin balance",
 				"trace_id", req.TraceId,
 				"from_address", req.FromAddress,
 				"error", err,
@@ -157,7 +192,7 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 			return nil, status.Errorf(codes.Internal, "failed to get balance: %v", err)
 		}
 
-		s.log.Info("[CheckSufficientBalance] got basic coin balance",
+		log.Info("[CheckSufficientBalance] got basic coin balance",
 			"trace_id", req.TraceId,
 			"from_address", req.FromAddress,
 			"balance", balance.String(),
@@ -165,7 +200,7 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 
 		amountInt, err := parseAmount(req.Amount)
 		if err != nil {
-			s.log.Warn("[CheckSufficientBalance] invalid amount format",
+			log.Warn("[CheckSufficientBalance] invalid amount format",
 				"trace_id", req.TraceId,
 				"amount", req.Amount,
 				"error", err,
@@ -175,17 +210,17 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 
 		isSufficient := balance.Cmp(amountInt) >= 0
 
-		s.log.Info("[CheckSufficientBalance] basic coin balance check result",
+		log.Info("[CheckSufficientBalance] basic coin balance check result",
 			"trace_id", req.TraceId,
 			"balance", balance.String(),
 			"required_amount", amountInt.String(),
 			"is_sufficient", isSufficient,
 		)
 
-		return &api.CheckSufficientBalanceResponse{IsSufficient: isSufficient}, nil
+		return &grpc.CheckSufficientBalanceResponse{IsSufficient: isSufficient}, nil
 	}
 
-	s.log.Info("[CheckSufficientBalance] checking token balance",
+	log.Info("[CheckSufficientBalance] checking token balance",
 		"trace_id", req.TraceId,
 		"from_address", req.FromAddress,
 		"contract", req.Contract,
@@ -193,21 +228,21 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 
 	baseFee, err := s.getBaseFee()
 	if err != nil {
-		s.log.Error("[CheckSufficientBalance] failed to get base fee",
+		log.Error("[CheckSufficientBalance] failed to get base fee",
 			"trace_id", req.TraceId,
 			"error", err,
 		)
 		return nil, status.Errorf(codes.Internal, "failed to get base fee: %v", err)
 	}
 
-	s.log.Info("[CheckSufficientBalance] got base fee",
+	log.Info("[CheckSufficientBalance] got base fee",
 		"trace_id", req.TraceId,
 		"base_fee", baseFee.String(),
 	)
 
 	balance, err := s.getBasicCoinBalance(ctx, req.FromAddress)
 	if err != nil {
-		s.log.Error("[CheckSufficientBalance] failed to get TRX balance for fee",
+		log.Error("[CheckSufficientBalance] failed to get TRX balance for fee",
 			"trace_id", req.TraceId,
 			"from_address", req.FromAddress,
 			"error", err,
@@ -215,24 +250,24 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 		return nil, status.Errorf(codes.Internal, "failed to get balance: %v", err)
 	}
 
-	s.log.Info("[CheckSufficientBalance] got TRX balance for fee check",
+	log.Info("[CheckSufficientBalance] got TRX balance for fee check",
 		"trace_id", req.TraceId,
 		"balance", balance.String(),
 		"base_fee", baseFee.String(),
 	)
 
 	if balance.Cmp(baseFee) < 0 {
-		s.log.Warn("[CheckSufficientBalance] insufficient TRX for fee",
+		log.Warn("[CheckSufficientBalance] insufficient TRX for fee",
 			"trace_id", req.TraceId,
 			"balance", balance.String(),
 			"base_fee", baseFee.String(),
 		)
-		return &api.CheckSufficientBalanceResponse{IsSufficient: false}, nil
+		return &grpc.CheckSufficientBalanceResponse{IsSufficient: false}, nil
 	}
 
 	tokenBalance, err := s.getTokenBalance(ctx, req.FromAddress, req.Contract)
 	if err != nil {
-		s.log.Error("[CheckSufficientBalance] failed to get token balance",
+		log.Error("[CheckSufficientBalance] failed to get token balance",
 			"trace_id", req.TraceId,
 			"from_address", req.FromAddress,
 			"contract", req.Contract,
@@ -241,7 +276,7 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 		return nil, status.Errorf(codes.Internal, "failed to get token balance: %v", err)
 	}
 
-	s.log.Info("[CheckSufficientBalance] got token balance",
+	log.Info("[CheckSufficientBalance] got token balance",
 		"trace_id", req.TraceId,
 		"from_address", req.FromAddress,
 		"contract", req.Contract,
@@ -250,7 +285,7 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 
 	amountInt, err := parseAmount(req.Amount)
 	if err != nil {
-		s.log.Warn("[CheckSufficientBalance] invalid amount format",
+		log.Warn("[CheckSufficientBalance] invalid amount format",
 			"trace_id", req.TraceId,
 			"amount", req.Amount,
 			"error", err,
@@ -260,18 +295,18 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *api.
 
 	isSufficient := tokenBalance.Cmp(amountInt) >= 0
 
-	s.log.Info("[CheckSufficientBalance] token balance check result",
+	log.Info("[CheckSufficientBalance] token balance check result",
 		"trace_id", req.TraceId,
 		"token_balance", tokenBalance.String(),
 		"required_amount", amountInt.String(),
 		"is_sufficient", isSufficient,
 	)
 
-	return &api.CheckSufficientBalanceResponse{IsSufficient: isSufficient}, nil
+	return &grpc.CheckSufficientBalanceResponse{IsSufficient: isSufficient}, nil
 }
 
-func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildSignRawDataRequest) (*api.BuildSignRawDataResponse, error) {
-	s.log.Info("[BuildSignRawData] received request",
+func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *grpc.BuildSignRawDataRequest) (*grpc.BuildSignRawDataResponse, error) {
+	log.Info("[BuildSignRawData] received request",
 		"biz_id", req.BizId,
 		"chain_id", req.ChainId,
 		"coin_id", req.CoinId,
@@ -284,14 +319,14 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 	)
 
 	if req.BizId == "" || len(req.BizId) > 36 {
-		s.log.Warn("[BuildSignRawData] invalid biz_id",
+		log.Warn("[BuildSignRawData] invalid biz_id",
 			"biz_id", req.BizId,
 			"biz_id_length", len(req.BizId),
 		)
 		return nil, status.Error(codes.InvalidArgument, "biz_id is required and must be 1-36 characters")
 	}
 	if req.ChainId == "" || len(req.ChainId) > 36 {
-		s.log.Warn("[BuildSignRawData] invalid chain_id",
+		log.Warn("[BuildSignRawData] invalid chain_id",
 			"biz_id", req.BizId,
 			"chain_id", req.ChainId,
 			"chain_id_length", len(req.ChainId),
@@ -299,7 +334,7 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 		return nil, status.Error(codes.InvalidArgument, "chain_id is required and must be 1-36 characters")
 	}
 	if req.CoinId == "" || len(req.CoinId) > 36 {
-		s.log.Warn("[BuildSignRawData] invalid coin_id",
+		log.Warn("[BuildSignRawData] invalid coin_id",
 			"biz_id", req.BizId,
 			"coin_id", req.CoinId,
 			"coin_id_length", len(req.CoinId),
@@ -307,7 +342,7 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 		return nil, status.Error(codes.InvalidArgument, "coin_id is required and must be 1-36 characters")
 	}
 	if req.CoinSymbol == "" || len(req.CoinSymbol) > 36 {
-		s.log.Warn("[BuildSignRawData] invalid coin_symbol",
+		log.Warn("[BuildSignRawData] invalid coin_symbol",
 			"biz_id", req.BizId,
 			"coin_symbol", req.CoinSymbol,
 			"coin_symbol_length", len(req.CoinSymbol),
@@ -315,7 +350,7 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 		return nil, status.Error(codes.InvalidArgument, "coin_symbol is required and must be 1-36 characters")
 	}
 	if req.FromAddress == "" || len(req.FromAddress) > 256 {
-		s.log.Warn("[BuildSignRawData] invalid from_address",
+		log.Warn("[BuildSignRawData] invalid from_address",
 			"biz_id", req.BizId,
 			"from_address", req.FromAddress,
 			"from_address_length", len(req.FromAddress),
@@ -323,7 +358,7 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 		return nil, status.Error(codes.InvalidArgument, "from_address is required and must be 1-256 characters")
 	}
 	if req.ToAddress == "" || len(req.ToAddress) > 256 {
-		s.log.Warn("[BuildSignRawData] invalid to_address",
+		log.Warn("[BuildSignRawData] invalid to_address",
 			"biz_id", req.BizId,
 			"to_address", req.ToAddress,
 			"to_address_length", len(req.ToAddress),
@@ -331,7 +366,7 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 		return nil, status.Error(codes.InvalidArgument, "to_address is required and must be 1-256 characters")
 	}
 	if req.Amount == "" || len(req.Amount) > 64 {
-		s.log.Warn("[BuildSignRawData] invalid amount",
+		log.Warn("[BuildSignRawData] invalid amount",
 			"biz_id", req.BizId,
 			"amount", req.Amount,
 			"amount_length", len(req.Amount),
@@ -339,7 +374,7 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 		return nil, status.Error(codes.InvalidArgument, "amount is required and must be 1-64 characters")
 	}
 	if !req.IsBasicCoin && (req.Contract == "" || len(req.Contract) > 256) {
-		s.log.Warn("[BuildSignRawData] missing contract for token",
+		log.Warn("[BuildSignRawData] missing contract for token",
 			"biz_id", req.BizId,
 			"is_basic_coin", req.IsBasicCoin,
 			"contract", req.Contract,
@@ -348,7 +383,7 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 	}
 
 	if !tron.IsPureNumber(req.Amount) {
-		s.log.Warn("[BuildSignRawData] amount is not pure number",
+		log.Warn("[BuildSignRawData] amount is not pure number",
 			"biz_id", req.BizId,
 			"amount", req.Amount,
 		)
@@ -356,21 +391,21 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 	}
 
 	if !tron.ValidateAddress(req.FromAddress) {
-		s.log.Warn("[BuildSignRawData] invalid from_address",
+		log.Warn("[BuildSignRawData] invalid from_address",
 			"biz_id", req.BizId,
 			"from_address", req.FromAddress,
 		)
 		return nil, status.Error(codes.InvalidArgument, "invalid from_address")
 	}
 	if !tron.ValidateAddress(req.ToAddress) {
-		s.log.Warn("[BuildSignRawData] invalid to_address",
+		log.Warn("[BuildSignRawData] invalid to_address",
 			"biz_id", req.BizId,
 			"to_address", req.ToAddress,
 		)
 		return nil, status.Error(codes.InvalidArgument, "invalid to_address")
 	}
 
-	s.log.Info("[BuildSignRawData] validation passed, building transaction",
+	log.Info("[BuildSignRawData] validation passed, building transaction",
 		"biz_id", req.BizId,
 		"is_basic_coin", req.IsBasicCoin,
 	)
@@ -379,7 +414,7 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 	var err error
 
 	if req.IsBasicCoin {
-		s.log.Info("[BuildSignRawData] building basic coin (TRX) transaction",
+		log.Info("[BuildSignRawData] building basic coin (TRX) transaction",
 			"biz_id", req.BizId,
 			"from_address", req.FromAddress,
 			"to_address", req.ToAddress,
@@ -388,7 +423,7 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 
 		rawData, err = s.buildBasicCoinTransaction(ctx, req.FromAddress, req.ToAddress, req.Amount)
 	} else {
-		s.log.Info("[BuildSignRawData] building token transaction",
+		log.Info("[BuildSignRawData] building token transaction",
 			"biz_id", req.BizId,
 			"from_address", req.FromAddress,
 			"to_address", req.ToAddress,
@@ -400,7 +435,7 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 	}
 
 	if err != nil {
-		s.log.Error("[BuildSignRawData] failed to build transaction",
+		log.Error("[BuildSignRawData] failed to build transaction",
 			"biz_id", req.BizId,
 			"is_basic_coin", req.IsBasicCoin,
 			"error", err,
@@ -408,44 +443,105 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *api.BuildS
 		return nil, status.Errorf(codes.Internal, "failed to build transaction: %v", err)
 	}
 
-	s.log.Info("[BuildSignRawData] transaction built successfully",
+	log.Info("[BuildSignRawData] transaction built successfully",
 		"biz_id", req.BizId,
 		"raw_data_length", len(rawData),
 	)
 
 	hash := tron.Sha256(rawData)
 	msg := hex.EncodeToString(hash)
+	rawDataHex := hex.EncodeToString(rawData)
 
-	s.log.Info("[BuildSignRawData] computed sign message",
-		"biz_id", req.BizId,
-		"message_hash", msg,
-	)
+	resp := &grpc.BuildSignRawDataResponse{
+		Msg:     msg,
+		RawData: rawDataHex,
+	}
 
-	resp := &api.BuildSignRawDataResponse{Msg: msg}
-
-	s.log.Info("[BuildSignRawData] returning response",
+	log.Info("[BuildSignRawData] returning response",
 		"biz_id", req.BizId,
 		"msg", msg,
+		"raw_data_length", len(rawDataHex),
 	)
 
 	return resp, nil
 }
 
+func (s *TxBuilderService) TxBroadcast(ctx context.Context, req *grpc.TxBroadcastRequest) (*grpc.TxBroadcastResponse, error) {
+	log.Info("[TxBroadcast] received request",
+		"trace_id", req.TraceId,
+		"raw_data_length", len(req.RawData),
+		"signature_length", len(req.Signature),
+	)
+
+	if req.TraceId == "" {
+		log.Warn("[TxBroadcast] missing trace_id",
+			"trace_id", req.TraceId,
+		)
+		return nil, status.Error(codes.InvalidArgument, "trace_id is required")
+	}
+	if req.RawData == "" {
+		log.Warn("[TxBroadcast] missing raw_data",
+			"trace_id", req.TraceId,
+		)
+		return nil, status.Error(codes.InvalidArgument, "raw_data is required")
+	}
+	if len(req.RawData) < 1 || len(req.RawData) > 4096 {
+		log.Warn("[TxBroadcast] invalid raw_data length",
+			"trace_id", req.TraceId,
+			"raw_data_length", len(req.RawData),
+		)
+		return nil, status.Error(codes.InvalidArgument, "raw_data must be 1-4096 characters")
+	}
+	if req.Signature == "" {
+		log.Warn("[TxBroadcast] missing signature",
+			"trace_id", req.TraceId,
+		)
+		return nil, status.Error(codes.InvalidArgument, "signature is required")
+	}
+	if len(req.Signature) < 1 || len(req.Signature) > 512 {
+		log.Warn("[TxBroadcast] invalid signature length",
+			"trace_id", req.TraceId,
+			"signature_length", len(req.Signature),
+		)
+		return nil, status.Error(codes.InvalidArgument, "signature must be 1-512 characters")
+	}
+
+	log.Info("[TxBroadcast] validation passed, broadcasting transaction",
+		"trace_id", req.TraceId,
+	)
+
+	success, err := s.rpc.BroadcastTransactionWithSignature(ctx, req.RawData, req.Signature)
+	if err != nil {
+		log.Error("[TxBroadcast] failed to broadcast transaction",
+			"trace_id", req.TraceId,
+			"error", err,
+		)
+		return nil, status.Errorf(codes.Internal, "failed to broadcast transaction: %v", err)
+	}
+
+	log.Info("[TxBroadcast] returning response",
+		"trace_id", req.TraceId,
+		"success", success,
+	)
+
+	return &grpc.TxBroadcastResponse{Success: success}, nil
+}
+
 func (s *TxBuilderService) getBasicCoinBalance(ctx context.Context, address string) (*big.Int, error) {
-	s.log.Debug("[getBasicCoinBalance] getting TRX balance",
+	log.Debug("[getBasicCoinBalance] getting TRX balance",
 		"address", address,
 	)
 
 	balance, err := s.rpc.GetBalance(ctx, address)
 	if err != nil {
-		s.log.Error("[getBasicCoinBalance] failed to get balance from node",
+		log.Error("[getBasicCoinBalance] failed to get balance from node",
 			"address", address,
 			"error", err,
 		)
 		return nil, errors.Wrap(err, "failed to get balance from node")
 	}
 
-	s.log.Debug("[getBasicCoinBalance] got balance from node",
+	log.Debug("[getBasicCoinBalance] got balance from node",
 		"address", address,
 		"balance", balance,
 	)
@@ -454,7 +550,7 @@ func (s *TxBuilderService) getBasicCoinBalance(ctx context.Context, address stri
 }
 
 func (s *TxBuilderService) getTokenBalance(ctx context.Context, address, contractAddress string) (*big.Int, error) {
-	s.log.Debug("[getTokenBalance] getting token balance",
+	log.Debug("[getTokenBalance] getting token balance",
 		"address", address,
 		"contract_address", contractAddress,
 	)
@@ -463,7 +559,7 @@ func (s *TxBuilderService) getTokenBalance(ctx context.Context, address, contrac
 	addrHex := tron.Base58ToHex(address)
 	parameter := fmt.Sprintf("0000000000000000000000%s", addrHex)
 
-	s.log.Debug("[getTokenBalance] calling TriggerConstantContract",
+	log.Debug("[getTokenBalance] calling TriggerConstantContract",
 		"address", address,
 		"contract_address", contractAddress,
 		"function_selector", functionSelector,
@@ -472,7 +568,7 @@ func (s *TxBuilderService) getTokenBalance(ctx context.Context, address, contrac
 
 	result, err := s.rpc.TriggerConstantContract(ctx, contractAddress, functionSelector, parameter, address)
 	if err != nil {
-		s.log.Error("[getTokenBalance] failed to trigger constant contract",
+		log.Error("[getTokenBalance] failed to trigger constant contract",
 			"address", address,
 			"contract_address", contractAddress,
 			"function_selector", functionSelector,
@@ -487,7 +583,7 @@ func (s *TxBuilderService) getTokenBalance(ctx context.Context, address, contrac
 
 	var res resultStruct
 	if err := json.Unmarshal(result, &res); err != nil {
-		s.log.Error("[getTokenBalance] failed to unmarshal token balance result",
+		log.Error("[getTokenBalance] failed to unmarshal token balance result",
 			"address", address,
 			"contract_address", contractAddress,
 			"raw_result", string(result),
@@ -497,7 +593,7 @@ func (s *TxBuilderService) getTokenBalance(ctx context.Context, address, contrac
 	}
 
 	if len(res.ConstantResult) == 0 {
-		s.log.Debug("[getTokenBalance] no constant result, returning zero balance",
+		log.Debug("[getTokenBalance] no constant result, returning zero balance",
 			"address", address,
 			"contract_address", contractAddress,
 		)
@@ -507,7 +603,7 @@ func (s *TxBuilderService) getTokenBalance(ctx context.Context, address, contrac
 	balanceHex := strings.TrimPrefix(res.ConstantResult[0], "0x")
 	balance, ok := new(big.Int).SetString(balanceHex, 16)
 	if !ok {
-		s.log.Warn("[getTokenBalance] failed to parse balance hex",
+		log.Warn("[getTokenBalance] failed to parse balance hex",
 			"address", address,
 			"contract_address", contractAddress,
 			"balance_hex", balanceHex,
@@ -515,7 +611,7 @@ func (s *TxBuilderService) getTokenBalance(ctx context.Context, address, contrac
 		return big.NewInt(0), nil
 	}
 
-	s.log.Debug("[getTokenBalance] got token balance",
+	log.Debug("[getTokenBalance] got token balance",
 		"address", address,
 		"contract_address", contractAddress,
 		"balance", balance.String(),
@@ -525,12 +621,12 @@ func (s *TxBuilderService) getTokenBalance(ctx context.Context, address, contrac
 }
 
 func (s *TxBuilderService) getBaseFee() (*big.Int, error) {
-	s.log.Debug("[getBaseFee] getting base fee")
+	log.Debug("[getBaseFee] getting base fee")
 	return big.NewInt(1000000), nil
 }
 
 func (s *TxBuilderService) buildBasicCoinTransaction(ctx context.Context, from, to, amount string) ([]byte, error) {
-	s.log.Debug("[buildBasicCoinTransaction] building TRX transaction",
+	log.Debug("[buildBasicCoinTransaction] building TRX transaction",
 		"from", from,
 		"to", to,
 		"amount", amount,
@@ -538,7 +634,7 @@ func (s *TxBuilderService) buildBasicCoinTransaction(ctx context.Context, from, 
 
 	amountInt, err := parseAmount(amount)
 	if err != nil {
-		s.log.Error("[buildBasicCoinTransaction] invalid amount",
+		log.Error("[buildBasicCoinTransaction] invalid amount",
 			"amount", amount,
 			"error", err,
 		)
@@ -555,7 +651,7 @@ func (s *TxBuilderService) buildBasicCoinTransaction(ctx context.Context, from, 
 		"visible":       false,
 	}
 
-	s.log.Debug("[buildBasicCoinTransaction] calling wallet/createtransaction",
+	log.Debug("[buildBasicCoinTransaction] calling wallet/createtransaction",
 		"owner_address", owner,
 		"to_address", receiver,
 		"amount", amountInt.Int64(),
@@ -563,7 +659,7 @@ func (s *TxBuilderService) buildBasicCoinTransaction(ctx context.Context, from, 
 
 	paramJSON, err := json.Marshal(param)
 	if err != nil {
-		s.log.Error("[buildBasicCoinTransaction] failed to marshal param",
+		log.Error("[buildBasicCoinTransaction] failed to marshal param",
 			"param", param,
 			"error", err,
 		)
@@ -572,7 +668,7 @@ func (s *TxBuilderService) buildBasicCoinTransaction(ctx context.Context, from, 
 
 	result, err := s.rpc.Call(ctx, "wallet/createtransaction", json.RawMessage(paramJSON))
 	if err != nil {
-		s.log.Error("[buildBasicCoinTransaction] failed to create transaction",
+		log.Error("[buildBasicCoinTransaction] failed to create transaction",
 			"owner_address", owner,
 			"to_address", receiver,
 			"amount", amountInt.Int64(),
@@ -589,7 +685,7 @@ func (s *TxBuilderService) buildBasicCoinTransaction(ctx context.Context, from, 
 
 	var tx txResult
 	if err := json.Unmarshal(result, &tx); err != nil {
-		s.log.Error("[buildBasicCoinTransaction] failed to unmarshal transaction",
+		log.Error("[buildBasicCoinTransaction] failed to unmarshal transaction",
 			"raw_result", string(result),
 			"error", err,
 		)
@@ -597,24 +693,25 @@ func (s *TxBuilderService) buildBasicCoinTransaction(ctx context.Context, from, 
 	}
 
 	if len(tx.RawData.Contract) == 0 {
-		s.log.Error("[buildBasicCoinTransaction] no contract in transaction",
+		log.Error("[buildBasicCoinTransaction] no contract in transaction",
 			"raw_result", string(result),
 		)
 		return nil, errors.New("no contract in transaction")
 	}
 
-	s.log.Debug("[buildBasicCoinTransaction] transaction created successfully",
+	log.Debug("[buildBasicCoinTransaction] transaction created successfully",
 		"from", from,
 		"to", to,
 		"amount", amount,
-		"contract_length", len(tx.RawData.Contract[0]),
+		"raw_data_length", len(result),
 	)
 
-	return tx.RawData.Contract[0], nil
+	// Return the full raw_data which contains the contract
+	return result, nil
 }
 
 func (s *TxBuilderService) buildTokenTransaction(ctx context.Context, from, to, amount, contract string) ([]byte, error) {
-	s.log.Debug("[buildTokenTransaction] building token transaction",
+	log.Debug("[buildTokenTransaction] building token transaction",
 		"from", from,
 		"to", to,
 		"amount", amount,
@@ -623,7 +720,7 @@ func (s *TxBuilderService) buildTokenTransaction(ctx context.Context, from, to, 
 
 	amountInt, err := parseAmount(amount)
 	if err != nil {
-		s.log.Error("[buildTokenTransaction] invalid amount",
+		log.Error("[buildTokenTransaction] invalid amount",
 			"amount", amount,
 			"error", err,
 		)
@@ -655,7 +752,7 @@ func (s *TxBuilderService) buildTokenTransaction(ctx context.Context, from, to, 
 		},
 	}
 
-	s.log.Debug("[buildTokenTransaction] calling wallet/triggersmartcontract",
+	log.Debug("[buildTokenTransaction] calling wallet/triggersmartcontract",
 		"owner_address", owner,
 		"contract_address", contractAddr,
 		"function_selector", "transfer(address,uint256)",
@@ -664,7 +761,7 @@ func (s *TxBuilderService) buildTokenTransaction(ctx context.Context, from, to, 
 
 	paramJSON, err := json.Marshal(param)
 	if err != nil {
-		s.log.Error("[buildTokenTransaction] failed to marshal param",
+		log.Error("[buildTokenTransaction] failed to marshal param",
 			"param", param,
 			"error", err,
 		)
@@ -673,7 +770,7 @@ func (s *TxBuilderService) buildTokenTransaction(ctx context.Context, from, to, 
 
 	result, err := s.rpc.Call(ctx, "wallet/triggersmartcontract", json.RawMessage(paramJSON))
 	if err != nil {
-		s.log.Error("[buildTokenTransaction] failed to trigger smart contract",
+		log.Error("[buildTokenTransaction] failed to trigger smart contract",
 			"owner_address", owner,
 			"contract_address", contractAddr,
 			"amount", amount,
@@ -692,22 +789,23 @@ func (s *TxBuilderService) buildTokenTransaction(ctx context.Context, from, to, 
 
 	var tx triggerResult
 	if err := json.Unmarshal(result, &tx); err != nil {
-		s.log.Error("[buildTokenTransaction] failed to unmarshal transaction",
+		log.Error("[buildTokenTransaction] failed to unmarshal transaction",
 			"raw_result", string(result),
 			"error", err,
 		)
 		return nil, errors.Wrap(err, "failed to unmarshal transaction")
 	}
 
-	s.log.Debug("[buildTokenTransaction] token transaction built successfully",
+	log.Debug("[buildTokenTransaction] token transaction built successfully",
 		"from", from,
 		"to", to,
 		"amount", amount,
 		"contract", contract,
-		"data_length", len(tx.Transaction.RawData.Data),
+		"result_length", len(result),
 	)
 
-	return tx.Transaction.RawData.Data, nil
+	// Return the full transaction result which contains raw_data with contract
+	return result, nil
 }
 
 func parseAmount(amount string) (*big.Int, error) {
