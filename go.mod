@@ -20,5 +20,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
-
-replace github.com/koku-web3/logko => /Users/jan/go/src/github/koku/internal/logko
