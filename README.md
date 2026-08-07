@@ -117,7 +117,7 @@ rpc CheckSufficientBalance(CheckSufficientBalanceRequest) returns (CheckSufficie
 | 字段            | 类型     | 说明                                     |
 | ------------- | ------ | -------------------------------------- |
 | trace_id      | string | 追踪 ID（必填）                              |
-| chain_id      | string | 链 ID，如 "tron"                          |
+| chain_code    | string | 链码，如 "tron"、“bitcoin”                   |
 | coin_id       | string | 币种 ID                                  |
 | is_basic_coin | bool   | `true` 表示 TRX（原生币），`false` 表示 TRC20 代币 |
 | from_address  | string | 发送方地址                                  |
@@ -149,7 +149,7 @@ rpc BuildSignRawData(BuildSignRawDataRequest) returns (BuildSignRawDataResponse)
 | 字段            | 类型     | 说明                                |
 | ------------- | ------ | --------------------------------- |
 | biz_id        | string | 业务 ID（必填，最多 36 字符）                |
-| chain_id      | string | 链 ID                              |
+| chain_code    | string | 链码，如 "tron"、“bitcoin”                              |
 | coin_id       | string | 币种 ID                             |
 | is_basic_coin | bool   | `true` 表示 TRX，`false` 表示 TRC20 代币 |
 | coin_symbol   | string | 代币符号                              |
@@ -218,7 +218,7 @@ grpcurl -plaintext -d '{
 # 检查余额（TRX）
 grpcurl -plaintext -d '{
   "trace_id": "test-002",
-  "chain_id": "tron",
+  "chain_code": "tron",
   "coin_id": "trx",
   "is_basic_coin": true,
   "from_address": "TLa2f6VPqBkREki5JsqLkNqyjLRBaMFKDY",
@@ -228,7 +228,7 @@ grpcurl -plaintext -d '{
 # 构造 TRX 转账交易
 grpcurl -plaintext -d '{
   "biz_id": "tx-001",
-  "chain_id": "tron",
+  "chain_code": "tron",
   "coin_id": "trx",
   "is_basic_coin": true,
   "coin_symbol": "TRX",
@@ -285,7 +285,7 @@ func main() {
 	// 构造 TRX 转账
 	txResp, err := client.BuildSignRawData(ctx, &grpc.BuildSignRawDataRequest{
 		BizId:       "tx-001",
-		ChainId:     "tron",
+		ChainCode:     "tron",
 		CoinId:      "trx",
 		IsBasicCoin: true,
 		CoinSymbol:  "TRX",

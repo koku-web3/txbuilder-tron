@@ -50,7 +50,7 @@ message VerifyContractAddressResponse {
 // CheckSufficientBalance
 message CheckSufficientBalanceRequest {
     string trace_id = 1;
-    string chain_id = 2;
+    string chain_code = 2;
     string coin_id = 3;
     bool is_basic_coin = 4;
     string from_address = 5;
@@ -65,7 +65,7 @@ message CheckSufficientBalanceResponse {
 // BuildSignRawData
 message BuildSignRawDataRequest {
     string biz_id = 1;
-    string chain_id = 2;
+    string chain_code = 2;
     string coin_id = 3;
     bool is_basic_coin = 4;
     string coin_symbol = 5;

@@ -116,7 +116,7 @@ func (s *TxBuilderService) VerifyContractAddress(ctx context.Context, req *grpc.
 func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *grpc.CheckSufficientBalanceRequest) (*grpc.CheckSufficientBalanceResponse, error) {
 	log.Info("[CheckSufficientBalance] received request",
 		"trace_id", req.TraceId,
-		"chain_id", req.ChainId,
+		"chain_code", req.ChainCode,
 		"coin_id", req.CoinId,
 		"is_basic_coin", req.IsBasicCoin,
 		"from_address", req.FromAddress,
@@ -130,13 +130,13 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *grpc
 		)
 		return nil, status.Error(codes.InvalidArgument, "trace_id is required")
 	}
-	if req.ChainId == "" || len(req.ChainId) > 36 {
-		log.Warn("[CheckSufficientBalance] invalid chain_id",
+	if req.ChainCode == "" || len(req.ChainCode) > 36 {
+		log.Warn("[CheckSufficientBalance] invalid chain_code",
 			"trace_id", req.TraceId,
-			"chain_id", req.ChainId,
-			"chain_id_length", len(req.ChainId),
+			"chain_code", req.ChainCode,
+			"chain_code_length", len(req.ChainCode),
 		)
-		return nil, status.Error(codes.InvalidArgument, "chain_id is required and must be 1-36 characters")
+		return nil, status.Error(codes.InvalidArgument, "chain_code is required and must be 1-36 characters")
 	}
 	if req.CoinId == "" || len(req.CoinId) > 36 {
 		log.Warn("[CheckSufficientBalance] invalid coin_id",
@@ -308,7 +308,7 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *grpc
 func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *grpc.BuildSignRawDataRequest) (*grpc.BuildSignRawDataResponse, error) {
 	log.Info("[BuildSignRawData] received request",
 		"biz_id", req.BizId,
-		"chain_id", req.ChainId,
+		"chain_code", req.ChainCode,
 		"coin_id", req.CoinId,
 		"coin_symbol", req.CoinSymbol,
 		"is_basic_coin", req.IsBasicCoin,
@@ -325,13 +325,13 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *grpc.Build
 		)
 		return nil, status.Error(codes.InvalidArgument, "biz_id is required and must be 1-36 characters")
 	}
-	if req.ChainId == "" || len(req.ChainId) > 36 {
-		log.Warn("[BuildSignRawData] invalid chain_id",
+	if req.ChainCode == "" || len(req.ChainCode) > 36 {
+		log.Warn("[BuildSignRawData] invalid chain_code",
 			"biz_id", req.BizId,
-			"chain_id", req.ChainId,
-			"chain_id_length", len(req.ChainId),
+			"chain_code", req.ChainCode,
+			"chain_code_length", len(req.ChainCode),
 		)
-		return nil, status.Error(codes.InvalidArgument, "chain_id is required and must be 1-36 characters")
+		return nil, status.Error(codes.InvalidArgument, "chain_code is required and must be 1-36 characters")
 	}
 	if req.CoinId == "" || len(req.CoinId) > 36 {
 		log.Warn("[BuildSignRawData] invalid coin_id",

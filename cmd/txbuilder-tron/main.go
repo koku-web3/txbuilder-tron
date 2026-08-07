@@ -29,7 +29,7 @@ func main() {
 	}
 
 	log.Info("starting txbuilder-tron service",
-		"chain_id", cfg.Chain.ChainID,
+		"chain_id", cfg.Chain.ChainCode,
 		"rpc_url", cfg.Chain.RPCURL,
 		"grpc_host", cfg.GRPC.Host,
 		"grpc_port", cfg.GRPC.Port,

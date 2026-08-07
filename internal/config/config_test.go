@@ -8,7 +8,7 @@ import (
 func TestLoadConfig(t *testing.T) {
 	configContent := `
 [chain]
-chain_id = "tron"
+chain_code = "tron"
 rpc_url = "https://nile.trongrid.io"
 
 [grpc]
@@ -53,8 +53,8 @@ vmodule = ""
 	}
 
 	// Test ChainConfig
-	if cfg.Chain.ChainID != "tron" {
-		t.Errorf("ChainID = %v, want %v", cfg.Chain.ChainID, "tron")
+	if cfg.Chain.ChainCode != "tron" {
+		t.Errorf("ChainCode = %v, want %v", cfg.Chain.ChainCode, "tron")
 	}
 	if cfg.Chain.RPCURL != "https://nile.trongrid.io" {
 		t.Errorf("RPCURL = %v, want %v", cfg.Chain.RPCURL, "https://nile.trongrid.io")
@@ -113,8 +113,8 @@ func TestLoadConfig_FileNotFound(t *testing.T) {
 func TestSetConfigForTest(t *testing.T) {
 	testCfg := &Config{
 		Chain: ChainConfig{
-			ChainID: "test-chain",
-			RPCURL:  "http://test.example.com",
+			ChainCode: "test-chain",
+			RPCURL:    "http://test.example.com",
 		},
 		GRPC: GRPCConfig{
 			Host: "localhost",
@@ -135,8 +135,8 @@ func TestSetConfigForTest(t *testing.T) {
 		t.Fatal("GetConfig() returned nil after SetConfigForTest")
 	}
 
-	if cfg.Chain.ChainID != "test-chain" {
-		t.Errorf("Chain.ChainID = %v, want %v", cfg.Chain.ChainID, "test-chain")
+	if cfg.Chain.ChainCode != "test-chain" {
+		t.Errorf("Chain.ChainCode = %v, want %v", cfg.Chain.ChainCode, "test-chain")
 	}
 	if cfg.Chain.RPCURL != "http://test.example.com" {
 		t.Errorf("Chain.RPCURL = %v, want %v", cfg.Chain.RPCURL, "http://test.example.com")

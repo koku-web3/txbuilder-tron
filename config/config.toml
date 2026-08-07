@@ -1,5 +1,5 @@
 [chain]
-chain_id = "tron"
+chain_code = "tron"
 rpc_url = "https://nile.trongrid.io"
 
 [grpc]

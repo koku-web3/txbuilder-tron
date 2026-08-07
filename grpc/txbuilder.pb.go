@@ -7,12 +7,11 @@
 package grpc
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -265,7 +264,7 @@ func (x *VerifyContractAddressResponse) GetIsValid() bool {
 type CheckSufficientBalanceRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TraceId       string                 `protobuf:"bytes,1,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
-	ChainId       string                 `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
+	ChainCode     string                 `protobuf:"bytes,2,opt,name=chain_code,json=chainCode,proto3" json:"chain_code,omitempty"`
 	CoinId        string                 `protobuf:"bytes,3,opt,name=coin_id,json=coinId,proto3" json:"coin_id,omitempty"`
 	IsBasicCoin   bool                   `protobuf:"varint,4,opt,name=is_basic_coin,json=isBasicCoin,proto3" json:"is_basic_coin,omitempty"`
 	FromAddress   string                 `protobuf:"bytes,5,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
@@ -312,9 +311,9 @@ func (x *CheckSufficientBalanceRequest) GetTraceId() string {
 	return ""
 }
 
-func (x *CheckSufficientBalanceRequest) GetChainId() string {
+func (x *CheckSufficientBalanceRequest) GetChainCode() string {
 	if x != nil {
-		return x.ChainId
+		return x.ChainCode
 	}
 	return ""
 }
@@ -402,7 +401,7 @@ func (x *CheckSufficientBalanceResponse) GetIsSufficient() bool {
 type BuildSignRawDataRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BizId         string                 `protobuf:"bytes,1,opt,name=biz_id,json=bizId,proto3" json:"biz_id,omitempty"`
-	ChainId       string                 `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
+	ChainCode     string                 `protobuf:"bytes,2,opt,name=chain_code,json=chainCode,proto3" json:"chain_code,omitempty"`
 	CoinId        string                 `protobuf:"bytes,3,opt,name=coin_id,json=coinId,proto3" json:"coin_id,omitempty"`
 	IsBasicCoin   bool                   `protobuf:"varint,4,opt,name=is_basic_coin,json=isBasicCoin,proto3" json:"is_basic_coin,omitempty"`
 	CoinSymbol    string                 `protobuf:"bytes,5,opt,name=coin_symbol,json=coinSymbol,proto3" json:"coin_symbol,omitempty"`
@@ -451,9 +450,9 @@ func (x *BuildSignRawDataRequest) GetBizId() string {
 	return ""
 }
 
-func (x *BuildSignRawDataRequest) GetChainId() string {
+func (x *BuildSignRawDataRequest) GetChainCode() string {
 	if x != nil {
-		return x.ChainId
+		return x.ChainCode
 	}
 	return ""
 }
@@ -509,8 +508,8 @@ func (x *BuildSignRawDataRequest) GetContract() string {
 
 type BuildSignRawDataResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Msg           string                 `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
-	RawData       string                 `protobuf:"bytes,2,opt,name=raw_data,json=rawData,proto3" json:"raw_data,omitempty"`
+	Msg           string                 `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`                        // SHA256(raw_data) - 待签名内容
+	RawData       string                 `protobuf:"bytes,2,opt,name=raw_data,json=rawData,proto3" json:"raw_data,omitempty"` // 原始交易数据 (hex 编码) - Coordinator 用于构造完整交易
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -563,8 +562,8 @@ func (x *BuildSignRawDataResponse) GetRawData() string {
 type TxBroadcastRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TraceId       string                 `protobuf:"bytes,1,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
-	RawData       string                 `protobuf:"bytes,2,opt,name=raw_data,json=rawData,proto3" json:"raw_data,omitempty"`
-	Signature     string                 `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
+	RawData       string                 `protobuf:"bytes,2,opt,name=raw_data,json=rawData,proto3" json:"raw_data,omitempty"` // 原始交易数据 (hex 编码)
+	Signature     string                 `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`            // 签名 (hex 编码)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -680,20 +679,22 @@ const file_grpc_txbuilder_proto_rawDesc = "" +
 	"\btrace_id\x18\x01 \x01(\tR\atraceId\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\tR\aaddress\":\n" +
 	"\x1dVerifyContractAddressResponse\x12\x19\n" +
-	"\bis_valid\x18\x01 \x01(\bR\aisValid\"\xe9\x01\n" +
+	"\bis_valid\x18\x01 \x01(\bR\aisValid\"\xed\x01\n" +
 	"\x1dCheckSufficientBalanceRequest\x12\x19\n" +
-	"\btrace_id\x18\x01 \x01(\tR\atraceId\x12\x19\n" +
-	"\bchain_id\x18\x02 \x01(\tR\achainId\x12\x17\n" +
+	"\btrace_id\x18\x01 \x01(\tR\atraceId\x12\x1d\n" +
+	"\n" +
+	"chain_code\x18\x02 \x01(\tR\tchainCode\x12\x17\n" +
 	"\acoin_id\x18\x03 \x01(\tR\x06coinId\x12\"\n" +
 	"\ris_basic_coin\x18\x04 \x01(\bR\visBasicCoin\x12!\n" +
 	"\ffrom_address\x18\x05 \x01(\tR\vfromAddress\x12\x16\n" +
 	"\x06amount\x18\x06 \x01(\tR\x06amount\x12\x1a\n" +
 	"\bcontract\x18\a \x01(\tR\bcontract\"E\n" +
 	"\x1eCheckSufficientBalanceResponse\x12#\n" +
-	"\ris_sufficient\x18\x01 \x01(\bR\fisSufficient\"\x9f\x02\n" +
+	"\ris_sufficient\x18\x01 \x01(\bR\fisSufficient\"\xa3\x02\n" +
 	"\x17BuildSignRawDataRequest\x12\x15\n" +
-	"\x06biz_id\x18\x01 \x01(\tR\x05bizId\x12\x19\n" +
-	"\bchain_id\x18\x02 \x01(\tR\achainId\x12\x17\n" +
+	"\x06biz_id\x18\x01 \x01(\tR\x05bizId\x12\x1d\n" +
+	"\n" +
+	"chain_code\x18\x02 \x01(\tR\tchainCode\x12\x17\n" +
 	"\acoin_id\x18\x03 \x01(\tR\x06coinId\x12\"\n" +
 	"\ris_basic_coin\x18\x04 \x01(\bR\visBasicCoin\x12\x1f\n" +
 	"\vcoin_symbol\x18\x05 \x01(\tR\n" +
@@ -702,12 +703,14 @@ const file_grpc_txbuilder_proto_rawDesc = "" +
 	"\n" +
 	"to_address\x18\a \x01(\tR\ttoAddress\x12\x16\n" +
 	"\x06amount\x18\b \x01(\tR\x06amount\x12\x1a\n" +
-	"\bcontract\x18\t \x01(\tR\bcontract\",\n" +
+	"\bcontract\x18\t \x01(\tR\bcontract\"G\n" +
 	"\x18BuildSignRawDataResponse\x12\x10\n" +
-	"\x03msg\x18\x01 \x01(\tR\x03msg\"I\n" +
+	"\x03msg\x18\x01 \x01(\tR\x03msg\x12\x19\n" +
+	"\braw_data\x18\x02 \x01(\tR\arawData\"h\n" +
 	"\x12TxBroadcastRequest\x12\x19\n" +
-	"\btrace_id\x18\x01 \x01(\tR\atraceId\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"/\n" +
+	"\btrace_id\x18\x01 \x01(\tR\atraceId\x12\x19\n" +
+	"\braw_data\x18\x02 \x01(\tR\arawData\x12\x1c\n" +
+	"\tsignature\x18\x03 \x01(\tR\tsignature\"/\n" +
 	"\x13TxBroadcastResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess2\xbd\x03\n" +
 	"\tTxBuilder\x12J\n" +
