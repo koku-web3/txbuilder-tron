@@ -196,6 +196,38 @@ rpc TxBroadcast(TxBroadcastRequest) returns (TxBroadcastResponse);
 
 
 
+### 6. ConvertAddress
+
+将 PKIX PEM 格式的公钥转换为 TRON 地址（Base58Check 编码，以 `T` 开头）。
+
+**算法说明：**
+1. 解析 PEM（`-----BEGIN PUBLIC KEY-----`），提取 PKIX SubjectPublicKeyInfo
+2. 验证曲线 OID 为 secp256k1（1.3.132.0.10）
+3. 提取未压缩的 EC 点（0x04 || x || y，共 65 字节）
+4. 对 65 字节做 **Keccak-256**（Legacy Keccak，非 NIST SHA3-256）
+5. 取哈希最后 20 字节，前面加 `0x41` → 共 21 字节 payload
+6. 计算 SHA256(SHA256(payload)) 前 4 字节作为 checksum，拼接后 Base58 编码
+
+```protobuf
+rpc ConvertAddress(ConvertAddressRequest) returns (ConvertAddressResponse);
+```
+
+**请求：**
+
+
+| 字段              | 类型     | 说明                                     |
+| --------------- | ------ | -------------------------------------- |
+| trace_id        | string | 追踪 ID（必填）                              |
+| pkix_pubkey_pem | string | PKIX PEM 格式的公钥（`-----BEGIN PUBLIC KEY-----`） |
+
+
+**响应：**
+
+
+| 字段     | 类型     | 说明            |
+| ------ | ------ | ------------- |
+| address | string | TRON 地址（Base58Check，以 T 开头） |
+
 
 ## 调用示例
 
@@ -244,6 +276,13 @@ grpcurl -plaintext -d '{
   "raw_data": "0a86010a028f162208022308...",
   "signature": "abcd1234..."
 }' localhost:50051 chain.TxBuilder/TxBroadcast
+
+# 将 PKIX PEM 公钥转换为 TRON 地址
+# pkix_pubkey_pem 需要是 secp256k1 曲线（1.3.132.0.10）的公钥
+grpcurl -plaintext -d '{
+  "trace_id": "convert-001",
+  "pkix_pubkey_pem": "-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEPShgff2ebuv9APjmHY7cZCjj8zzNEKfM\n1t2HgBZboXlkctVu4iomxUHfuOCJuKcijpVWNHTVSgRzKVjBhO3Bhw==\n-----END PUBLIC KEY-----"
+}' localhost:50051 chain.TxBuilder/ConvertAddress
 ```
 
 
@@ -297,6 +336,16 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("签名消息: %s\n", txResp.Msg)
+
+	// 将 PKIX PEM 公钥转换为 TRON 地址
+	convertResp, err := client.ConvertAddress(ctx, &grpc.ConvertAddressRequest{
+		TraceId: "convert-001",
+		PkixPubkeyPem: "-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEPShgff2ebuv9APjmHY7cZCjj8zzNEKfM\n1t2HgBZboXlkctVu4iomxUHfuOCJuKcijpVWNHTVSgRzKVjBhO3Bhw==\n-----END PUBLIC KEY-----",
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("TRON 地址: %s\n", convertResp.Address)
 }
 ```
 

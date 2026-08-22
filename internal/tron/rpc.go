@@ -40,11 +40,7 @@ func (c *RPCClient) call(ctx context.Context, path string, params interface{}) (
 		} else {
 			body, err = json.Marshal(params)
 			if err != nil {
-				log.Error("[RPCClient.call] failed to marshal params",
-					"path", path,
-					"params_type", fmt.Sprintf("%T", params),
-					"error", err,
-				)
+				log.Error("[RPCClient.call] failed to marshal params", "path", path, "params_type", fmt.Sprintf("%T", params), "error", err)
 				return nil, fmt.Errorf("failed to marshal params: %w", err)
 			}
 		}
@@ -52,81 +48,45 @@ func (c *RPCClient) call(ctx context.Context, path string, params interface{}) (
 
 	url := c.rpcURL + "/" + path
 
-	log.Debug("[RPCClient.call] preparing request",
-		"url", url,
-		"path", path,
-		"body_length", len(body),
-	)
+	log.Debug("[RPCClient.call] preparing request", "url", url, "path", path, "body_length", len(body))
 
 	if len(body) > 0 {
 		var prettyJSON map[string]interface{}
 		if err := json.Unmarshal(body, &prettyJSON); err == nil {
-			log.Debug("[RPCClient.call] request body",
-				"url", url,
-				"body", prettyJSON,
-			)
+			log.Debug("[RPCClient.call] request body", "url", url, "body", prettyJSON)
 		} else {
-			log.Debug("[RPCClient.call] request body (raw)",
-				"url", url,
-				"body_raw", string(body),
-			)
+			log.Debug("[RPCClient.call] request body (raw)", "url", url, "body_raw", string(body))
 		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		log.Error("[RPCClient.call] failed to create request",
-			"url", url,
-			"error", err,
-		)
+		log.Error("[RPCClient.call] failed to create request", "url", url, "error", err)
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	log.Debug("[RPCClient.call] sending HTTP request",
-		"url", url,
-		"method", http.MethodPost,
-	)
+	log.Debug("[RPCClient.call] sending HTTP request", "url", url, "method", http.MethodPost)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		log.Error("[RPCClient.call] failed to do request",
-			"url", url,
-			"error", err,
-		)
+		log.Error("[RPCClient.call] failed to do request", "url", url, "error", err)
 		return nil, fmt.Errorf("failed to do request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	log.Debug("[RPCClient.call] received HTTP response",
-		"url", url,
-		"status_code", resp.StatusCode,
-		"status", resp.Status,
-	)
+	log.Debug("[RPCClient.call] received HTTP response", "url", url, "status_code", resp.StatusCode, "status", resp.Status)
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Error("[RPCClient.call] failed to read response body",
-			"url", url,
-			"status_code", resp.StatusCode,
-			"error", err,
-		)
+		log.Error("[RPCClient.call] failed to read response body", "url", url, "status_code", resp.StatusCode, "error", err)
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	log.Debug("[RPCClient.call] response body received",
-		"url", url,
-		"status_code", resp.StatusCode,
-		"response_body_length", len(respBody),
-	)
+	log.Debug("[RPCClient.call] response body received", "url", url, "status_code", resp.StatusCode, "response_body_length", len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
-		log.Error("[RPCClient.call] RPC call failed with non-200 status",
-			"url", url,
-			"path", path,
-			"status_code", resp.StatusCode,
-			"response_body", string(respBody),
-		)
+		log.Error("[RPCClient.call] RPC call failed with non-200 status", "url", url, "path", path, "status_code", resp.StatusCode, "response_body", string(respBody))
 		return nil, fmt.Errorf("rpc call failed with status: %d, body: %s", resp.StatusCode, string(respBody))
 	}
 
@@ -135,27 +95,17 @@ func (c *RPCClient) call(ctx context.Context, path string, params interface{}) (
 	}
 	var terr tronError
 	if err := json.Unmarshal(respBody, &terr); err == nil && terr.Error != "" {
-		log.Error("[RPCClient.call] Tron RPC returned error",
-			"url", url,
-			"path", path,
-			"tron_error", terr.Error,
-		)
+		log.Error("[RPCClient.call] Tron RPC returned error", "url", url, "path", path, "tron_error", terr.Error)
 		return nil, fmt.Errorf("tron rpc error: %s", terr.Error)
 	}
 
-	log.Debug("[RPCClient.call] RPC call successful",
-		"url", url,
-		"path", path,
-		"response_body_length", len(respBody),
-	)
+	log.Debug("[RPCClient.call] RPC call successful", "url", url, "path", path, "response_body_length", len(respBody))
 
 	return respBody, nil
 }
 
 func (c *RPCClient) GetAccount(ctx context.Context, address string) (json.RawMessage, error) {
-	log.Debug("[RPCClient.GetAccount] calling wallet/getaccount",
-		"address", address,
-	)
+	log.Debug("[RPCClient.GetAccount] calling wallet/getaccount", "address", address)
 
 	params := map[string]interface{}{
 		"address": address,
@@ -163,25 +113,17 @@ func (c *RPCClient) GetAccount(ctx context.Context, address string) (json.RawMes
 	}
 	result, err := c.call(ctx, "wallet/getaccount", params)
 	if err != nil {
-		log.Error("[RPCClient.GetAccount] failed to get account",
-			"address", address,
-			"error", err,
-		)
+		log.Error("[RPCClient.GetAccount] failed to get account", "address", address, "error", err)
 		return nil, err
 	}
 
-	log.Debug("[RPCClient.GetAccount] got account",
-		"address", address,
-		"result_length", len(result),
-	)
+	log.Debug("[RPCClient.GetAccount] got account", "address", address, "result_length", len(result))
 
 	return result, nil
 }
 
 func (c *RPCClient) GetBalance(ctx context.Context, address string) (int64, error) {
-	log.Debug("[RPCClient.GetBalance] calling wallet/getaccount",
-		"address", address,
-	)
+	log.Debug("[RPCClient.GetBalance] calling wallet/getaccount", "address", address)
 
 	type accountResp struct {
 		Balance int64 `json:"balance"`
@@ -192,38 +134,23 @@ func (c *RPCClient) GetBalance(ctx context.Context, address string) (int64, erro
 		"visible": true,
 	})
 	if err != nil {
-		log.Error("[RPCClient.GetBalance] failed to get account",
-			"address", address,
-			"error", err,
-		)
+		log.Error("[RPCClient.GetBalance] failed to get account", "address", address, "error", err)
 		return 0, err
 	}
 
 	var acc accountResp
 	if err := json.Unmarshal(result, &acc); err != nil {
-		log.Error("[RPCClient.GetBalance] failed to unmarshal account",
-			"address", address,
-			"raw_result", string(result),
-			"error", err,
-		)
+		log.Error("[RPCClient.GetBalance] failed to unmarshal account", "address", address, "raw_result", string(result), "error", err)
 		return 0, fmt.Errorf("failed to unmarshal account: %w", err)
 	}
 
-	log.Debug("[RPCClient.GetBalance] got balance",
-		"address", address,
-		"balance", acc.Balance,
-	)
+	log.Debug("[RPCClient.GetBalance] got balance", "address", address, "balance", acc.Balance)
 
 	return acc.Balance, nil
 }
 
 func (c *RPCClient) TriggerConstantContract(ctx context.Context, contractAddress, functionSelector, parameter, ownerAddress string) (json.RawMessage, error) {
-	log.Debug("[RPCClient.TriggerConstantContract] calling wallet/triggerconstantcontract",
-		"contract_address", contractAddress,
-		"function_selector", functionSelector,
-		"parameter", parameter,
-		"owner_address", ownerAddress,
-	)
+	log.Debug("[RPCClient.TriggerConstantContract] calling wallet/triggerconstantcontract", "contract_address", contractAddress, "function_selector", functionSelector, "parameter", parameter, "owner_address", ownerAddress)
 
 	args := map[string]interface{}{
 		"contract_address":  contractAddress,
@@ -235,11 +162,7 @@ func (c *RPCClient) TriggerConstantContract(ctx context.Context, contractAddress
 
 	result, err := c.call(ctx, "wallet/triggerconstantcontract", args)
 	if err != nil {
-		log.Error("[RPCClient.TriggerConstantContract] failed to trigger constant contract",
-			"contract_address", contractAddress,
-			"function_selector", functionSelector,
-			"error", err,
-		)
+		log.Error("[RPCClient.TriggerConstantContract] failed to trigger constant contract", "contract_address", contractAddress, "function_selector", functionSelector, "error", err)
 		return nil, err
 	}
 
@@ -252,116 +175,76 @@ func (c *RPCClient) TriggerConstantContract(ctx context.Context, contractAddress
 	var resp rpcResponse
 	if len(result) > 0 {
 		_ = json.Unmarshal(result, &resp)
-		log.Info("[RPCClient.TriggerConstantContract] RPC response",
-			"contract_address", contractAddress,
-			"function_selector", functionSelector,
-			"result_success", resp.Result.Result,
-			"constant_result_count", len(resp.ConstantResult),
-			"raw_result", string(result),
-		)
+		log.Info("[RPCClient.TriggerConstantContract] RPC response", "contract_address", contractAddress, "function_selector", functionSelector, "result_success", resp.Result.Result, "constant_result_count", len(resp.ConstantResult), "raw_result", string(result))
 	}
 
 	return result, nil
 }
 
 func (c *RPCClient) GetTransactionInfoById(ctx context.Context, txID string) (json.RawMessage, error) {
-	log.Debug("[RPCClient.GetTransactionInfoById] calling wallet/gettransactioninfobyid",
-		"tx_id", txID,
-	)
+	log.Debug("[RPCClient.GetTransactionInfoById] calling wallet/gettransactioninfobyid", "tx_id", txID)
 
 	result, err := c.call(ctx, "wallet/gettransactioninfobyid", map[string]interface{}{
 		"value": txID,
 	})
 	if err != nil {
-		log.Error("[RPCClient.GetTransactionInfoById] failed to get transaction info",
-			"tx_id", txID,
-			"error", err,
-		)
+		log.Error("[RPCClient.GetTransactionInfoById] failed to get transaction info", "tx_id", txID, "error", err)
 		return nil, err
 	}
 
-	log.Debug("[RPCClient.GetTransactionInfoById] got transaction info",
-		"tx_id", txID,
-		"result_length", len(result),
-	)
+	log.Debug("[RPCClient.GetTransactionInfoById] got transaction info", "tx_id", txID, "result_length", len(result))
 
 	return result, nil
 }
 
 func (c *RPCClient) GetContract(ctx context.Context, contractAddress string) (json.RawMessage, error) {
-	log.Debug("[RPCClient.GetContract] calling wallet/getcontract",
-		"contract_address", contractAddress,
-	)
+	log.Debug("[RPCClient.GetContract] calling wallet/getcontract", "contract_address", contractAddress)
 
 	result, err := c.call(ctx, "wallet/getcontract", map[string]interface{}{
 		"address": contractAddress,
 		"visible": true,
 	})
 	if err != nil {
-		log.Error("[RPCClient.GetContract] failed to get contract",
-			"contract_address", contractAddress,
-			"error", err,
-		)
+		log.Error("[RPCClient.GetContract] failed to get contract", "contract_address", contractAddress, "error", err)
 		return nil, err
 	}
 
-	log.Debug("[RPCClient.GetContract] got contract",
-		"contract_address", contractAddress,
-		"result_length", len(result),
-	)
+	log.Debug("[RPCClient.GetContract] got contract", "contract_address", contractAddress, "result_length", len(result))
 
 	return result, nil
 }
 
 func (c *RPCClient) Call(ctx context.Context, path string, params json.RawMessage) (json.RawMessage, error) {
-	log.Debug("[RPCClient.Call] calling RPC",
-		"path", path,
-		"params_length", len(params),
-	)
+	log.Debug("[RPCClient.Call] calling RPC", "path", path, "params_length", len(params))
 
 	result, err := c.call(ctx, path, params)
 	if err != nil {
-		log.Error("[RPCClient.Call] RPC call failed",
-			"path", path,
-			"error", err,
-		)
+		log.Error("[RPCClient.Call] RPC call failed", "path", path, "error", err)
 		return nil, err
 	}
 
-	log.Debug("[RPCClient.Call] RPC call successful",
-		"path", path,
-		"result_length", len(result),
-	)
+	log.Debug("[RPCClient.Call] RPC call successful", "path", path, "result_length", len(result))
 
 	return result, nil
 }
 
 func (c *RPCClient) BroadcastTransaction(ctx context.Context, transactionHex string) (bool, error) {
-	log.Debug("[RPCClient.BroadcastTransaction] broadcasting transaction",
-		"transaction_hex_length", len(transactionHex),
-	)
+	log.Debug("[RPCClient.BroadcastTransaction] broadcasting transaction", "transaction_hex_length", len(transactionHex))
 
 	txData, err := hex.DecodeString(transactionHex)
 	if err != nil {
-		log.Error("[RPCClient.BroadcastTransaction] failed to decode transaction hex",
-			"error", err,
-		)
+		log.Error("[RPCClient.BroadcastTransaction] failed to decode transaction hex", "error", err)
 		return false, fmt.Errorf("failed to decode transaction hex: %w", err)
 	}
 
 	// Decode the protobuf transaction to extract raw_data JSON and signatures
 	rawDataJSON, signatureBytes, err := decodeSignedTransaction(txData)
 	if err != nil {
-		log.Error("[RPCClient.BroadcastTransaction] failed to decode transaction",
-			"error", err,
-		)
+		log.Error("[RPCClient.BroadcastTransaction] failed to decode transaction", "error", err)
 		return false, fmt.Errorf("failed to decode transaction: %w", err)
 	}
 
-	log.Debug("[RPCClient.BroadcastTransaction] transaction decoded",
-		"raw_data_json_length", len(rawDataJSON),
-		"signature_count", len(signatureBytes),
-	)
+	log.Debug("[RPCClient.BroadcastTransaction] transaction decoded", "raw_data_json_length", len(rawDataJSON), "signature_count", len(signatureBytes))
 
 	// Convert signatures to hex strings
 	signatures := make([]string, len(signatureBytes))
@@ -372,9 +255,7 @@ func (c *RPCClient) BroadcastTransaction(ctx context.Context, transactionHex str
 	// Parse raw_data JSON
 	var rawData map[string]interface{}
 	if err := json.Unmarshal(rawDataJSON, &rawData); err != nil {
-		log.Error("[RPCClient.BroadcastTransaction] failed to parse raw_data JSON",
-			"error", err,
-		)
+		log.Error("[RPCClient.BroadcastTransaction] failed to parse raw_data JSON", "error", err)
 		return false, fmt.Errorf("failed to parse raw_data JSON: %w", err)
 	}
 
@@ -388,9 +269,7 @@ func (c *RPCClient) BroadcastTransaction(ctx context.Context, transactionHex str
 
 	result, err := c.call(ctx, "wallet/broadcasttransaction", args)
 	if err != nil {
-		log.Error("[RPCClient.BroadcastTransaction] broadcast failed",
-			"error", err,
-		)
+		log.Error("[RPCClient.BroadcastTransaction] broadcast failed", "error", err)
 		return false, err
 	}
 
@@ -402,62 +281,44 @@ func (c *RPCClient) BroadcastTransaction(ctx context.Context, transactionHex str
 
 	var resp broadcastResponse
 	if err := json.Unmarshal(result, &resp); err != nil {
-		log.Error("[RPCClient.BroadcastTransaction] failed to unmarshal response",
-			"raw_result", string(result),
-			"error", err,
-		)
+		log.Error("[RPCClient.BroadcastTransaction] failed to unmarshal response", "raw_result", string(result), "error", err)
 		return false, fmt.Errorf("failed to unmarshal broadcast response: %w", err)
 	}
 
-	log.Info("[RPCClient.BroadcastTransaction] broadcast result",
-		"success", resp.Result,
-		"code", resp.Code,
-		"message", resp.Message,
-	)
+	log.Info("[RPCClient.BroadcastTransaction] broadcast result", "success", resp.Result, "code", resp.Code, "message", resp.Message)
 
 	return resp.Result, nil
 }
 
 // BroadcastTransactionWithSignature broadcasts a transaction by assembling raw_data and signature
 func (c *RPCClient) BroadcastTransactionWithSignature(ctx context.Context, rawDataHex, signatureHex string) (bool, error) {
-	log.Debug("[RPCClient.BroadcastTransactionWithSignature] assembling and broadcasting",
-		"raw_data_hex_length", len(rawDataHex),
-		"signature_hex_length", len(signatureHex),
-	)
+	log.Debug("[RPCClient.BroadcastTransactionWithSignature] assembling and broadcasting", "raw_data_hex_length", len(rawDataHex), "signature_hex_length", len(signatureHex))
 
 	// Decode raw_data from hex
 	rawDataBytes, err := hex.DecodeString(rawDataHex)
 	if err != nil {
-		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to decode raw_data hex",
-			"error", err,
-		)
+		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to decode raw_data hex", "error", err)
 		return false, fmt.Errorf("failed to decode raw_data hex: %w", err)
 	}
 
 	// Decode signature from hex
 	signatureBytes, err := hex.DecodeString(signatureHex)
 	if err != nil {
-		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to decode signature hex",
-			"error", err,
-		)
+		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to decode signature hex", "error", err)
 		return false, fmt.Errorf("failed to decode signature hex: %w", err)
 	}
 
 	// Convert raw_data bytes to JSON
 	rawDataJSON, err := decodeRawDataToJSON(rawDataBytes)
 	if err != nil {
-		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to decode raw_data to JSON",
-			"error", err,
-		)
+		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to decode raw_data to JSON", "error", err)
 		return false, fmt.Errorf("failed to decode raw_data to JSON: %w", err)
 	}
 
 	// Parse raw_data JSON
 	var rawData map[string]interface{}
 	if err := json.Unmarshal(rawDataJSON, &rawData); err != nil {
-		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to parse raw_data JSON",
-			"error", err,
-		)
+		log.Error("[RPCClient.BroadcastTransactionWithSignature] failed to parse raw_data JSON", "error", err)
 		return false, fmt.Errorf("failed to parse raw_data JSON: %w", err)
 	}
 
@@ -474,9 +335,7 @@ func (c *RPCClient) BroadcastTransactionWithSignature(ctx context.Context, rawDa
 func (c *RPCClient) broadcast(ctx context.Context, args map[string]interface{}) (bool, error) {
 	result, err := c.call(ctx, "wallet/broadcasttransaction", args)
 	if err != nil {
-		log.Error("[RPCClient.broadcast] broadcast failed",
-			"error", err,
-		)
+		log.Error("[RPCClient.broadcast] broadcast failed", "error", err)
 		return false, err
 	}
 
@@ -488,18 +347,11 @@ func (c *RPCClient) broadcast(ctx context.Context, args map[string]interface{}) 
 
 	var resp broadcastResponse
 	if err := json.Unmarshal(result, &resp); err != nil {
-		log.Error("[RPCClient.broadcast] failed to unmarshal response",
-			"raw_result", string(result),
-			"error", err,
-		)
+		log.Error("[RPCClient.broadcast] failed to unmarshal response", "raw_result", string(result), "error", err)
 		return false, fmt.Errorf("failed to unmarshal broadcast response: %w", err)
 	}
 
-	log.Info("[RPCClient.broadcast] broadcast result",
-		"success", resp.Result,
-		"code", resp.Code,
-		"message", resp.Message,
-	)
+	log.Info("[RPCClient.broadcast] broadcast result", "success", resp.Result, "code", resp.Code, "message", resp.Message)
 
 	return resp.Result, nil
 }

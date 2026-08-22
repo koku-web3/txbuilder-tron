@@ -367,3 +367,124 @@ func TestTxBroadcast_Validation(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertAddress_Validation(t *testing.T) {
+	cfg := &config.Config{}
+	config.SetConfigForTest(cfg)
+
+	svc := &TxBuilderService{}
+
+	tests := []struct {
+		name    string
+		req     *grpc.ConvertAddressRequest
+		wantErr bool
+	}{
+		{
+			name: "missing trace_id",
+			req: &grpc.ConvertAddressRequest{
+				TraceId: "",
+				Keys: []*grpc.PublicKeysRequest{
+					{
+						AccountIndex:  0,
+						PkixPubkeyPem: "-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE9G3bKKkF5xIHuJ2lM9V6f0q2aFzEqYvP1vQdK3jW8g==\n-----END PUBLIC KEY-----\n",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing keys",
+			req: &grpc.ConvertAddressRequest{
+				TraceId: "test-trace-id",
+				Keys:    nil,
+			},
+			wantErr: true,
+		},
+		{
+			name: "empty keys",
+			req: &grpc.ConvertAddressRequest{
+				TraceId: "test-trace-id",
+				Keys:    []*grpc.PublicKeysRequest{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing pkix_pubkey_pem in key",
+			req: &grpc.ConvertAddressRequest{
+				TraceId: "test-trace-id",
+				Keys: []*grpc.PublicKeysRequest{
+					{
+						AccountIndex:  0,
+						PkixPubkeyPem: "",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid PEM string",
+			req: &grpc.ConvertAddressRequest{
+				TraceId: "test-trace-id",
+				Keys: []*grpc.PublicKeysRequest{
+					{
+						AccountIndex:  0,
+						PkixPubkeyPem: "not a valid pem string at all",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid PEM format but wrong key type",
+			req: &grpc.ConvertAddressRequest{
+				TraceId: "test-trace-id",
+				Keys: []*grpc.PublicKeysRequest{
+					{
+						AccountIndex:  0,
+						PkixPubkeyPem: "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9G3bKKkF5xIHuJ2lM9V6f0q2aFzEqYvP1vQdK3jW8g==\n-----END PUBLIC KEY-----\n",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "pkix_pubkey_pem too long",
+			req: &grpc.ConvertAddressRequest{
+				TraceId: "test-trace-id",
+				Keys: []*grpc.PublicKeysRequest{
+					{
+						AccountIndex:  0,
+						PkixPubkeyPem: string(make([]byte, 8193)),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "multiple keys with one invalid",
+			req: &grpc.ConvertAddressRequest{
+				TraceId: "test-trace-id",
+				Keys: []*grpc.PublicKeysRequest{
+					{
+						AccountIndex:  0,
+						PkixPubkeyPem: "-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE9G3bKKkF5xIHuJ2lM9V6f0q2aFzEqYvP1vQdK3jW8g==\n-----END PUBLIC KEY-----\n",
+					},
+					{
+						AccountIndex:  1,
+						PkixPubkeyPem: "invalid",
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := svc.ConvertAddress(context.Background(), tt.req)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ConvertAddress() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
