@@ -193,13 +193,13 @@ func (s *TxBuilderService) CheckSufficientBalance(ctx context.Context, req *grpc
 }
 
 func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *grpc.BuildSignRawDataRequest) (*grpc.BuildSignRawDataResponse, error) {
-	log.Info("[BuildSignRawData] received request", "biz_id", req.BizId, "chain_code", req.ChainCode, "coin_id", req.CoinId, "coin_symbol", req.CoinSymbol, "is_basic_coin", req.IsBasicCoin, "from_address", req.FromAddress, "to_address", req.ToAddress, "amount", req.Amount, "contract", req.Contract)
+	log.Info("[BuildSignRawData] received request", "trace_id", req.TraceId, "chain_code", req.ChainCode, "coin", req.Coin, "coin_symbol", req.CoinSymbol, "is_basic_coin", req.IsBasicCoin, "from_address", req.FromAddress, "to_address", req.ToAddress, "amount", req.Amount, "contract", req.Contract)
 
 	if err := s.validateBuildSignRawData(req); err != nil {
 		return nil, err
 	}
 
-	log.Info("[BuildSignRawData] validation passed, building transaction", "biz_id", req.BizId, "is_basic_coin", req.IsBasicCoin)
+	log.Info("[BuildSignRawData] validation passed, building transaction", "trace_id", req.TraceId, "is_basic_coin", req.IsBasicCoin)
 
 	var rawData []byte
 	var err error
@@ -211,11 +211,11 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *grpc.Build
 	}
 
 	if err != nil {
-		log.Error("[BuildSignRawData] failed to build transaction", "biz_id", req.BizId, "is_basic_coin", req.IsBasicCoin, "error", err)
+		log.Error("[BuildSignRawData] failed to build transaction", "trace_id", req.TraceId, "is_basic_coin", req.IsBasicCoin, "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to build transaction: %v", err)
 	}
 
-	log.Info("[BuildSignRawData] transaction built successfully", "biz_id", req.BizId, "raw_data_length", len(rawData))
+	log.Info("[BuildSignRawData] transaction built successfully", "trace_id", req.TraceId, "raw_data_length", len(rawData))
 
 	hash := tron.Sha256(rawData)
 	msg := hex.EncodeToString(hash)
@@ -226,7 +226,7 @@ func (s *TxBuilderService) BuildSignRawData(ctx context.Context, req *grpc.Build
 		RawData: rawDataHex,
 	}
 
-	log.Info("[BuildSignRawData] returning response", "biz_id", req.BizId, "msg", msg, "raw_data_length", len(rawDataHex))
+	log.Info("[BuildSignRawData] returning response", "trace_id", req.TraceId, "msg", msg, "raw_data_length", len(rawDataHex))
 
 	return resp, nil
 }
@@ -453,7 +453,7 @@ func (s *TxBuilderService) buildTokenTransaction(ctx context.Context, from, to, 
 }
 
 func (*TxBuilderService) validateCheckSufficientBalance(req *grpc.CheckSufficientBalanceRequest) error {
-	log.Info("[CheckSufficientBalance] received request", "trace_id", req.TraceId, "chain_code", req.ChainCode, "coin_id", req.CoinId, "is_basic_coin", req.IsBasicCoin, "from_address", req.FromAddress, "amount", req.Amount, "contract", req.Contract)
+	log.Info("[CheckSufficientBalance] received request", "trace_id", req.TraceId, "chain_code", req.ChainCode, "coin", req.Coin, "is_basic_coin", req.IsBasicCoin, "from_address", req.FromAddress, "amount", req.Amount, "contract", req.Contract)
 
 	if req.TraceId == "" {
 		log.Warn("[CheckSufficientBalance] missing trace_id", "trace_id", req.TraceId)
@@ -463,9 +463,9 @@ func (*TxBuilderService) validateCheckSufficientBalance(req *grpc.CheckSufficien
 		log.Warn("[CheckSufficientBalance] invalid chain_code", "trace_id", req.TraceId, "chain_code", req.ChainCode, "chain_code_length", len(req.ChainCode))
 		return fmt.Errorf("chain_code is required and must be 1-36 characters")
 	}
-	if req.CoinId == "" || len(req.CoinId) > 36 {
-		log.Warn("[CheckSufficientBalance] invalid coin_id", "trace_id", req.TraceId, "coin_id", req.CoinId, "coin_id_length", len(req.CoinId))
-		return fmt.Errorf("coin_id is required and must be 1-36 characters")
+	if req.Coin == "" || len(req.Coin) > 36 {
+		log.Warn("[CheckSufficientBalance] invalid coin", "trace_id", req.TraceId, "coin", req.Coin, "coin_id_length", len(req.Coin))
+		return fmt.Errorf("coin is required and must be 1-36 characters")
 	}
 	if req.FromAddress == "" || len(req.FromAddress) > 256 {
 		log.Warn("[CheckSufficientBalance] invalid from_address", "trace_id", req.TraceId, "from_address", req.FromAddress, "from_address_length", len(req.FromAddress))
@@ -483,57 +483,57 @@ func (*TxBuilderService) validateCheckSufficientBalance(req *grpc.CheckSufficien
 }
 
 func (*TxBuilderService) validateBuildSignRawData(req *grpc.BuildSignRawDataRequest) error {
-	if req.BizId == "" || len(req.BizId) > 36 {
-		log.Warn("[BuildSignRawData] invalid biz_id", "biz_id", req.BizId, "biz_id_length", len(req.BizId))
-		return status.Error(codes.InvalidArgument, "biz_id is required and must be 1-36 characters")
+	if req.TraceId == "" || len(req.TraceId) > 36 {
+		log.Warn("[BuildSignRawData] invalid trace_id", "trace_id", req.TraceId, "trace_id_length", len(req.TraceId))
+		return status.Error(codes.InvalidArgument, "trace_id is required and must be 1-36 characters")
 	}
 
 	if req.ChainCode == "" || len(req.ChainCode) > 36 {
-		log.Warn("[BuildSignRawData] invalid chain_code", "biz_id", req.BizId, "chain_code", req.ChainCode, "chain_code_length", len(req.ChainCode))
+		log.Warn("[BuildSignRawData] invalid chain_code", "trace_id", req.TraceId, "chain_code", req.ChainCode, "chain_code_length", len(req.ChainCode))
 		return status.Error(codes.InvalidArgument, "chain_code is required and must be 1-36 characters")
 	}
 
-	if req.CoinId == "" || len(req.CoinId) > 36 {
-		log.Warn("[BuildSignRawData] invalid coin_id", "biz_id", req.BizId, "coin_id", req.CoinId, "coin_id_length", len(req.CoinId))
-		return status.Error(codes.InvalidArgument, "coin_id is required and must be 1-36 characters")
+	if req.Coin == "" || len(req.Coin) > 36 {
+		log.Warn("[BuildSignRawData] invalid coin", "trace_id", req.TraceId, "coin", req.Coin, "coin_id_length", len(req.Coin))
+		return status.Error(codes.InvalidArgument, "coin is required and must be 1-36 characters")
 	}
 
 	if req.CoinSymbol == "" || len(req.CoinSymbol) > 36 {
-		log.Warn("[BuildSignRawData] invalid coin_symbol", "biz_id", req.BizId, "coin_symbol", req.CoinSymbol, "coin_symbol_length", len(req.CoinSymbol))
+		log.Warn("[BuildSignRawData] invalid coin_symbol", "trace_id", req.TraceId, "coin_symbol", req.CoinSymbol, "coin_symbol_length", len(req.CoinSymbol))
 		return status.Error(codes.InvalidArgument, "coin_symbol is required and must be 1-36 characters")
 	}
 
 	if req.FromAddress == "" || len(req.FromAddress) > 256 {
-		log.Warn("[BuildSignRawData] invalid from_address", "biz_id", req.BizId, "from_address", req.FromAddress, "from_address_length", len(req.FromAddress))
+		log.Warn("[BuildSignRawData] invalid from_address", "trace_id", req.TraceId, "from_address", req.FromAddress, "from_address_length", len(req.FromAddress))
 		return status.Error(codes.InvalidArgument, "from_address is required and must be 1-256 characters")
 	}
 
 	if req.ToAddress == "" || len(req.ToAddress) > 256 {
-		log.Warn("[BuildSignRawData] invalid to_address", "biz_id", req.BizId, "to_address", req.ToAddress, "to_address_length", len(req.ToAddress))
+		log.Warn("[BuildSignRawData] invalid to_address", "trace_id", req.TraceId, "to_address", req.ToAddress, "to_address_length", len(req.ToAddress))
 		return status.Error(codes.InvalidArgument, "to_address is required and must be 1-256 characters")
 	}
 
 	if req.Amount == "" || len(req.Amount) > 64 {
-		log.Warn("[BuildSignRawData] invalid amount", "biz_id", req.BizId, "amount", req.Amount, "amount_length", len(req.Amount))
+		log.Warn("[BuildSignRawData] invalid amount", "trace_id", req.TraceId, "amount", req.Amount, "amount_length", len(req.Amount))
 		return status.Error(codes.InvalidArgument, "amount is required and must be 1-64 characters")
 	}
 
 	if !req.IsBasicCoin && (req.Contract == "" || len(req.Contract) > 256) {
-		log.Warn("[BuildSignRawData] missing contract for token", "biz_id", req.BizId, "is_basic_coin", req.IsBasicCoin, "contract", req.Contract)
+		log.Warn("[BuildSignRawData] missing contract for token", "trace_id", req.TraceId, "is_basic_coin", req.IsBasicCoin, "contract", req.Contract)
 		return status.Error(codes.InvalidArgument, "contract is required when is_basic_coin is false")
 	}
 
 	if !tron.IsPureNumber(req.Amount) {
-		log.Warn("[BuildSignRawData] amount is not pure number", "biz_id", req.BizId, "amount", req.Amount)
+		log.Warn("[BuildSignRawData] amount is not pure number", "trace_id", req.TraceId, "amount", req.Amount)
 		return status.Error(codes.InvalidArgument, "amount must be a pure number")
 	}
 
 	if !tron.ValidateAddress(req.FromAddress) {
-		log.Warn("[BuildSignRawData] invalid from_address", "biz_id", req.BizId, "from_address", req.FromAddress)
+		log.Warn("[BuildSignRawData] invalid from_address", "trace_id", req.TraceId, "from_address", req.FromAddress)
 		return status.Error(codes.InvalidArgument, "invalid from_address")
 	}
 	if !tron.ValidateAddress(req.ToAddress) {
-		log.Warn("[BuildSignRawData] invalid to_address", "biz_id", req.BizId, "to_address", req.ToAddress)
+		log.Warn("[BuildSignRawData] invalid to_address", "trace_id", req.TraceId, "to_address", req.ToAddress)
 		return status.Error(codes.InvalidArgument, "invalid to_address")
 	}
 	return nil

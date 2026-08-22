@@ -141,7 +141,7 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "",
 				ChainCode:   "tron",
-				CoinId:      "trx",
+				Coin:        "trx",
 				IsBasicCoin: true,
 				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
 				Amount:      "100",
@@ -153,7 +153,7 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "",
-				CoinId:      "trx",
+				Coin:        "trx",
 				IsBasicCoin: true,
 				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
 				Amount:      "100",
@@ -165,7 +165,7 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
-				CoinId:      "",
+				Coin:        "",
 				IsBasicCoin: true,
 				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
 				Amount:      "100",
@@ -177,7 +177,7 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
-				CoinId:      "trx",
+				Coin:        "trx",
 				IsBasicCoin: true,
 				FromAddress: "",
 				Amount:      "100",
@@ -189,7 +189,7 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
-				CoinId:      "trx",
+				Coin:        "trx",
 				IsBasicCoin: true,
 				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
 				Amount:      "",
@@ -201,7 +201,7 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 			req: &grpc.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
-				CoinId:      "usdt",
+				Coin:        "usdt",
 				IsBasicCoin: false,
 				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
 				Amount:      "100",
@@ -235,9 +235,9 @@ func TestBuildSignRawData_Validation(t *testing.T) {
 		{
 			name: "missing biz_id",
 			req: &grpc.BuildSignRawDataRequest{
-				BizId:       "",
+				TraceId:     "",
 				ChainCode:   "tron",
-				CoinId:      "trx",
+				Coin:        "trx",
 				IsBasicCoin: true,
 				CoinSymbol:  "TRX",
 				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
@@ -249,9 +249,9 @@ func TestBuildSignRawData_Validation(t *testing.T) {
 		{
 			name: "invalid from_address",
 			req: &grpc.BuildSignRawDataRequest{
-				BizId:       "test-biz-id",
+				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
-				CoinId:      "trx",
+				Coin:        "trx",
 				IsBasicCoin: true,
 				CoinSymbol:  "TRX",
 				FromAddress: "invalid_address",
@@ -263,9 +263,9 @@ func TestBuildSignRawData_Validation(t *testing.T) {
 		{
 			name: "invalid to_address",
 			req: &grpc.BuildSignRawDataRequest{
-				BizId:       "test-biz-id",
+				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
-				CoinId:      "trx",
+				Coin:        "trx",
 				IsBasicCoin: true,
 				CoinSymbol:  "TRX",
 				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
@@ -277,9 +277,9 @@ func TestBuildSignRawData_Validation(t *testing.T) {
 		{
 			name: "amount with decimal point",
 			req: &grpc.BuildSignRawDataRequest{
-				BizId:       "test-biz-id",
+				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
-				CoinId:      "trx",
+				Coin:        "trx",
 				IsBasicCoin: true,
 				CoinSymbol:  "TRX",
 				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
