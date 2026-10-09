@@ -17,6 +17,7 @@ type Config struct {
 type ChainConfig struct {
 	ChainCode string `toml:"chain_code"`
 	RPCURL    string `toml:"rpc_url"`
+	ChainID   uint64 `toml:"chain_id"`
 }
 
 type GRPCConfig struct {

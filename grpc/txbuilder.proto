@@ -1,28 +1,31 @@
 syntax = "proto3";
 
-package chain;
+package txbuilder;
 
-option go_package = "github.com/koku-web3/txbuilder-tron/grpc;grpc";
+option go_package = "github.com/koku-web3/txbuilder-tron/grpc;txbuilder";
 
-// TxBuilder service provides transaction construction APIs
+// TxBuilder 服务提供交易构建相关的 API
 service TxBuilder {
-  // Verify if an address is valid
-  rpc VerifyAddress(VerifyAddressRequest) returns (VerifyAddressResponse);
+  // 将 PEM 编码的公钥转换为波场地址
+    rpc ConvertAddress(ConvertAddressRequest) returns (ConvertAddressResponse);
 
-  // Verify if a contract address is valid
-  rpc VerifyContractAddress(VerifyContractAddressRequest) returns (VerifyContractAddressResponse);
+  // 验证一个地址是否有效
+    rpc VerifyAddress(VerifyAddressRequest) returns (VerifyAddressResponse);
 
-  // Convert a PKIX-PEM public key to a TRON address
-  rpc ConvertAddress(ConvertAddressRequest) returns (ConvertAddressResponse);
+  // 验证一个合约地址是否有效
+    rpc VerifyContractAddress(VerifyContractAddressRequest) returns (VerifyContractAddressResponse);
 
-  // Check if the balance is sufficient for a transfer
-  rpc CheckSufficientBalance(CheckSufficientBalanceRequest) returns (CheckSufficientBalanceResponse);
+  // 检查余额是否足够进行转账
+    rpc CheckSufficientBalance(CheckSufficientBalanceRequest) returns (CheckSufficientBalanceResponse);
 
-  // Build unsigned transaction raw data for signing
-  rpc BuildSignRawData(BuildSignRawDataRequest) returns (BuildSignRawDataResponse);
+  // 构建用于签名的未签名交易原始数据
+    rpc BuildSignRawData(BuildSignRawDataRequest) returns (BuildSignRawDataResponse);
 
-  // Broadcast a signed transaction to the network
-  rpc TxBroadcast(TxBroadcastRequest) returns (TxBroadcastResponse);
+  // 广播已签名交易到网络
+    rpc TxBroadcast(TxBroadcastRequest) returns (TxBroadcastResponse);
+
+  // 查询余额
+    rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
 }
 
 // Common request with trace ID
@@ -52,12 +55,22 @@ message VerifyContractAddressResponse {
 
 // ConvertAddress
 message ConvertAddressRequest {
-  string trace_id = 1;
+  string trace_id = 1; // 1-36 必填
   repeated PublicKeysRequest keys = 2;
 }
 
+message PublicKeysRequest {
+  uint32 account_index = 1;
+  string pkix_pubkey_pem = 2; // 必填；PKIX 标准的公钥，PEM 格式
+}
+
 message ConvertAddressResponse {
-  repeated PublicKeysResponse address_list = 1;
+  repeated PublicKeysResponse keys = 1;
+}
+
+message PublicKeysResponse {
+  uint32 account_index = 1;
+  string address = 2; // TRON 地址（Base58Check 编码，以 T 开头）
 }
 
 // CheckSufficientBalance
@@ -65,15 +78,14 @@ message CheckSufficientBalanceRequest {
   string trace_id = 1; // 1-36 必填
   string chain_code = 2; // 1-36 必填； 唯一， 表示区块链名称，如：bitcoin、ethereum、tron
   string coin = 3; // 必填； 唯一， 表示转账币种，如：btc、eth、usdt、dog；不涉及判断逻辑，仅作展示
-  bool is_basic_coin = 4; // 必填；是否主链币
-  string from_address = 5; // 1-256 必填；转账发起地址
-  string amount = 6; // 必填； 金额，单位是最小该链单位，如：以太坊单位就是wei；波场单位就是sun
-  string contract = 7; // 1-256 非必填；转账币种对应的合约地址。如果`isBasicCoin`为false时，必填
+  string from_address = 4; // 1-256 必填；转账发起地址
+  string amount = 5; // 必填； 金额，单位是最小该链单位，如：以太坊单位就是wei；波场单位就是sun
+  string contract = 6; // 1-256 非必填；转账币种对应的合约地址。如果空串表示主链币
 }
 
 message CheckSufficientBalanceResponse {
   bool is_coin_sufficient = 1; // 主链币是否足够
-  bool is_token_sufficient = 2; // 合约余额是否足够
+  bool is_token_sufficient = 2; // 合约余额是否足够；注意当检查合约余额时两个返回值都需要判断
 }
 
 // BuildSignRawData
@@ -81,36 +93,40 @@ message BuildSignRawDataRequest {
   string trace_id = 1; // 1-36 必填
   string chain_code = 2; // 1-36 必填； 唯一， 表示区块链名称，如：bitcoin、ethereum、tron
   string coin = 3; // 必填； 唯一， 表示转账币种，如：btc、eth、usdt、dog；不涉及判断逻辑，仅作展示
-  bool is_basic_coin = 4; // 必填；是否主链币
-  string coin_symbol = 5; // 1-36 必填； 币种符合，用于展示，不涉及逻辑
-  string from_address = 6; // 1-256 必填；转账发起地址
-  string to_address = 7; // 1-256 必填；转账接收地址
-  string amount = 8; // 必填； 转账金额，单位是最小该链单位，如：以太坊单位就是wei；波场单位就是sun
-  string contract = 9; // 1-256 非必填；转账币种对应的合约地址。如果`isBasicCoin`为false时，必填
+  string coin_symbol = 4; // 1-36 必填； 币种符合，用于展示，不涉及逻辑
+  string from_address = 5; // 1-256 必填；转账发起地址
+  string to_address = 6; // 1-256 必填；转账接收地址
+  string amount = 7; // 必填； 转账金额，单位是最小该链单位，如：以太坊单位就是wei；波场单位就是sun
+  string contract = 8; // 1-256 非必填；转账币种对应的合约地址。如果空串表示主链币
 }
 
 message BuildSignRawDataResponse {
-  string msg = 1; // SHA256(raw_data) - 待签名内容
+  string msg = 1; // SHA256(raw_data) - 待签名内容（TRON 交易哈希）
   string raw_data = 2; // 原始交易数据 (hex 编码) - Coordinator 用于构造完整交易
 }
 
 // TxBroadcast
 message TxBroadcastRequest {
-  string trace_id = 1;  // 1-36 必填
+  string trace_id = 1;
   string raw_data = 2; // 原始交易数据 (hex 编码)
-  string signature = 3; // 签名 (hex 编码)
+  // 外部传入的签名数据，格式为 R（32字节） + S（32字节）+ V (V 1个字节)
+  string signature = 3;
+  // 1-256 必填；转账发起地址
+  // 用于校验 signature 恢复出的地址是否与预期一致，防止签名错配后广播出他人账户的交易
+  string from_address = 4;
 }
 
 message TxBroadcastResponse {
-  bool success = 1;
+  string tx_hash = 1; // 交易哈希，广播成功后返回
 }
 
-message PublicKeysRequest {
-  uint32 account_index = 1;
-  string pkix_pubkey_pem = 2;
+// GetBalance
+message GetBalanceRequest {
+  string trace_id = 1; // 1-36 必填
+  string address = 2; // 1-256 必填；需要查询的地址
+  string contract = 3; // 1-256 非必填；查询合约代币余额。如果空串表示查询主链币余额
 }
 
-message PublicKeysResponse {
-  uint32 account_index = 1;
-  string address = 2;
+message GetBalanceResponse {
+  string amount = 1; // 单位是最小该链单位，如：以太坊单位就是wei；波场单位就是sun
 }

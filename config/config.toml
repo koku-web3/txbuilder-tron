@@ -1,10 +1,11 @@
 [chain]
 chain_code = "tron"
 rpc_url = "https://nile.trongrid.io"
+chain_id = 1
 
 [grpc]
 host = "127.0.0.1"
-port = 50051
+port = 51051
 
 [log]
 rotation = true
@@ -14,5 +15,5 @@ max_backups = 10
 max_age = 30
 compress = true
 format = "terminal"
-verbosity = 3
+verbosity = 5
 vmodule = ""

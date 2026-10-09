@@ -261,7 +261,7 @@ func TestBase58ToHex(t *testing.T) {
 		{
 			name:    "hex string not 64 chars -> DecodeBase58 succeeds (32 bytes -> 64 hex)",
 			address: "4168F775B6A2D460F2F9D6C4B0E7B8D5F1C3A9E7D2B4F6A8C0E2D4B6F8A0C2E4",
-			wantLen: 64, // DecodeBase58 succeeds -> 32 bytes -> 64 hex chars (42 not reached)
+			wantLen: 64, // DecodeBase58 成功 -> 32 字节 -> 64 个十六进制字符（未达到 42）
 		},
 	}
 
@@ -276,7 +276,7 @@ func TestBase58ToHex(t *testing.T) {
 }
 
 func TestPublicKeyToAddress(t *testing.T) {
-	// Error cases
+	// 错误情况
 	errorTests := []struct {
 		name        string
 		pem         string
@@ -323,14 +323,14 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQQ==
 		})
 	}
 
-	// Valid secp256k1 key test
-	t.Run("valid secp256k1 key", func(t *testing.T) {
-		// Generate a deterministic secp256k1 key using btcec.
+	// 有效的 secp256k1 密钥测试
+	t.Run("有效的 secp256k1 密钥", func(t *testing.T) {
+		// 使用 btcec 生成确定性 secp256k1 密钥。
 		seed := []byte("txbuilder-tron-convert-address-test")
 		_, pubKey := generateTestBtcecKey(seed)
 
-		// Build PKIX SubjectPublicKeyInfo using btcec's SerializeUncompressed.
-		// This avoids manual ellipticMarshal which could have subtle bugs.
+		// 使用 btcec 的 SerializeUncompressed 构建 PKIX SubjectPublicKeyInfo。
+		// 这避免了手动 ellipticMarshal 可能产生的微妙错误。
 		oidECPublicKey := asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
 		oidSecp256k1 := asn1.ObjectIdentifier{1, 3, 132, 0, 10}
 
@@ -342,28 +342,28 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQQ==
 			t.Fatalf("asn1.Marshal(algoID): %v", err)
 		}
 
-		// Use btcec's SerializeUncompressed for the EC point.
+		// 使用 btcec 的 SerializeUncompressed 获取 EC 点。
 		pubBytes := pubKey.SerializeUncompressed()
 		if len(pubBytes) != 65 || pubBytes[0] != 0x04 {
-			t.Fatalf("SerializeUncompressed: unexpected result len=%d prefix=0x%02x", len(pubBytes), pubBytes[0])
+			t.Fatalf("SerializeUncompressed: 意外结果 len=%d prefix=0x%02x", len(pubBytes), pubBytes[0])
 		}
 
-		// BIT STRING: tag 0x03, length, unused bits (0), content.
+		// BIT STRING: 标签 0x03, 长度, 未使用位 (0), 内容。
 		bitStringContent := append([]byte{0x00}, pubBytes...)
 		bitString := append([]byte{0x03, byte(len(bitStringContent))}, bitStringContent...)
 
-		// Full PKIX: SEQUENCE { algoID, bitString }.
+		// 完整 PKIX: SEQUENCE { algoID, bitString }。
 		pkixInner := append(algoIDBytes, bitString...)
 		pkixBytes := append([]byte{0x30, byte(len(pkixInner))}, pkixInner...)
 
-		// Encode as PEM.
+		// 编码为 PEM。
 		pemBlock := &pem.Block{
 			Type:  "PUBLIC KEY",
 			Bytes: pkixBytes,
 		}
 		validPEM := string(pem.EncodeToMemory(pemBlock))
 
-		// Compute expected address directly from the known-good pubBytes.
+		// 直接从已知的良好 pubBytes 计算预期地址。
 		hash := sha3.NewLegacyKeccak256()
 		hash.Write(pubBytes)
 		keccakDigest := hash.Sum(nil)
@@ -387,8 +387,8 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQQ==
 }
 
 func TestEncodeBase58Check(t *testing.T) {
-	// Verify the known TRON address round-trips correctly:
-	// TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ → DecodeBase58 → take first 21 bytes → EncodeBase58Check
+	// 验证已知的 TRON 地址往返转换正确：
+	// TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ → DecodeBase58 → 取前 21 字节 → EncodeBase58Check
 	addr := "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ"
 	decoded, err := DecodeBase58(addr)
 	if err != nil {

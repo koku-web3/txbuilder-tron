@@ -11,7 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 代码质量检查
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -22,7 +21,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
 
       - name: Install golangci-lint
@@ -31,7 +30,6 @@ jobs:
       - name: Run golangci-lint
         run: golangci-lint run ./...
 
-  # 格式化检查
   fmt:
     name: Format Check
     runs-on: ubuntu-latest
@@ -42,7 +40,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26'
 
       - name: Check formatting
         run: |
@@ -52,7 +50,6 @@ jobs:
             exit 1
           fi
 
-  # 静态分析
   vet:
     name: Vet
     runs-on: ubuntu-latest
@@ -63,12 +60,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26'
 
       - name: Run go vet
         run: go vet ./...
 
-  # 单元测试
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -79,7 +75,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
 
       - name: Download dependencies
@@ -99,7 +95,6 @@ jobs:
         run: |
           go tool cover -func=coverage.out
 
-  # 安全扫描
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -110,7 +105,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
 
       - name: Install gosec
@@ -119,7 +114,6 @@ jobs:
       - name: Run gosec
         run: gosec -exclude=G103,G104,G115,G118,G302,G304,G404 ./...
 
-  # 构建检查
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -130,12 +124,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26'
 
       - name: Build
         run: go build ./...
 
-  # 依赖验证
   tidy:
     name: Dep Tidy Check
     runs-on: ubuntu-latest
@@ -146,7 +139,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26'
 
       - name: Check go mod tidy
         run: |

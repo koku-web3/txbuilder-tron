@@ -1,0 +1,56 @@
+# Build stage
+FROM golang:1.26-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates
+
+# Set working directory
+WORKDIR /app
+
+# Build arguments (default mirrors for China, override in CI to proxy.golang.org)
+ARG GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=${GOPROXY}
+
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o txbuilder-tron ./cmd/txbuilder-tron/
+
+# Runtime stage
+FROM alpine:3.19
+
+# Install CA certificates for HTTPS calls
+RUN apk --no-cache add ca-certificates tzdata
+
+# Set timezone
+ENV TZ=Asia/Shanghai
+
+# Create non-root user
+RUN adduser -D -g '' appuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /app/txbuilder-tron .
+
+# Copy default config (will be overridden by volume mount)
+COPY --from=builder /app/config ./config
+
+# Change ownership
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose gRPC port
+EXPOSE 51051
+
+# Run the application
+ENTRYPOINT ["./txbuilder-tron"]
+CMD ["-config", "/app/config/config.docker.toml"]

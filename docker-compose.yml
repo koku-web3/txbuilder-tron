@@ -1,0 +1,18 @@
+services:
+  txbuilder-tron:
+    container_name: txbuilder-tron
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: txbuilder-tron:latest
+    ports:
+      - "51051:51051"
+    volumes:
+      - ./config/config.docker.toml:/app/config/config.docker.toml:ro
+    restart: unless-stopped
+    networks:
+      - koku-net
+
+networks:
+  koku-net:
+    external: true

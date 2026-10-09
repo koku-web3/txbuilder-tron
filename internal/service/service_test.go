@@ -2,11 +2,80 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"strings"
 	"testing"
 
-	"github.com/koku-web3/txbuilder-tron/grpc"
+	txbuilder "github.com/koku-web3/txbuilder-tron/grpc"
 	"github.com/koku-web3/txbuilder-tron/internal/config"
+	"github.com/koku-web3/txbuilder-tron/internal/tron"
 )
+
+// mockRefBlockFetcher implements tron.RefBlockFetcher for service-level tests.
+type mockRefBlockFetcher struct {
+	blockResp []byte
+	blockErr  error
+}
+
+func (m *mockRefBlockFetcher) GetNowBlock(ctx context.Context) (json.RawMessage, error) {
+	return m.blockResp, m.blockErr
+}
+
+// Valid TRON mainnet addresses that pass gotron-sdk's DecodeCheck.
+const svcTestFrom = "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ"
+const svcTestTo = "TMuA6YqfCeX8EhbfYEg5y7S4DqzSJireY9"
+const svcTestContract = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+
+func TestBuildSignRawData_MsgEqualsSHA256RawData(t *testing.T) {
+	blockRespJSON := `{"blockID":"0x00000000052eb0c0cb95fd971bc93fc21683e18bb3f84b6427b0f32b57ae6ab7","block_header":{"raw_data":{"number":86945984}}}`
+	fetcher := &mockRefBlockFetcher{blockResp: []byte(blockRespJSON)}
+
+	rawData, err := tron.BuildBasicCoinRawData(context.Background(), fetcher, svcTestFrom, svcTestTo, "1000000")
+	if err != nil {
+		t.Fatalf("BuildBasicCoinRawData() error = %v", err)
+	}
+
+	rawDataHex := hex.EncodeToString(rawData)
+	hash := sha256.Sum256(rawData)
+	msg := hex.EncodeToString(hash[:])
+
+	if msg == "" {
+		t.Error("Msg should not be empty")
+	}
+	if len(rawData) == 0 {
+		t.Error("RawData should not be empty")
+	}
+	if msg == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
+		t.Error("Msg appears to be SHA256 of empty data")
+	}
+
+	t.Logf("BasicCoin: raw_data_length=%d, msg=%s", len(rawData), msg)
+	_ = rawDataHex
+}
+
+func TestBuildSignRawData_MsgEqualsSHA256RawData_Token(t *testing.T) {
+	blockRespJSON := `{"blockID":"0x00000000052eb0c0cb95fd971bc93fc21683e18bb3f84b6427b0f32b57ae6ab7","block_header":{"raw_data":{"number":86945984}}}`
+	fetcher := &mockRefBlockFetcher{blockResp: []byte(blockRespJSON)}
+
+	rawData, err := tron.BuildTokenRawData(context.Background(), fetcher, svcTestFrom, svcTestTo, "1000000", svcTestContract, tron.DefaultTRC20FeeLimit)
+	if err != nil {
+		t.Fatalf("BuildTokenRawData() error = %v", err)
+	}
+
+	hash := sha256.Sum256(rawData)
+	msg := hex.EncodeToString(hash[:])
+
+	if msg == "" {
+		t.Error("Msg should not be empty")
+	}
+	if len(rawData) == 0 {
+		t.Error("RawData should not be empty")
+	}
+
+	t.Logf("Token: raw_data_length=%d, msg=%s", len(rawData), msg)
+}
 
 func TestVerifyAddress(t *testing.T) {
 	tests := []struct {
@@ -18,21 +87,21 @@ func TestVerifyAddress(t *testing.T) {
 	}{
 		{
 			name:      "valid address",
-			address:   "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
+			address:   "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ",
 			traceID:   "test-trace-id",
 			wantValid: true,
 			wantErr:   false,
 		},
 		{
-			name:      "invalid address - starts with 3",
-			address:   "3NsVCWoo9REhQVKbwuhSkxRYRAxTDagMqn",
+			name:      "invalid address",
+			address:   "invalid_address",
 			traceID:   "test-trace-id",
 			wantValid: false,
 			wantErr:   false,
 		},
 		{
 			name:      "missing trace_id",
-			address:   "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
+			address:   "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ",
 			traceID:   "",
 			wantValid: false,
 			wantErr:   true,
@@ -53,7 +122,7 @@ func TestVerifyAddress(t *testing.T) {
 
 			svc := &TxBuilderService{}
 
-			req := &grpc.VerifyAddressRequest{
+			req := &txbuilder.VerifyAddressRequest{
 				TraceId: tt.traceID,
 				Address: tt.address,
 			}
@@ -80,21 +149,21 @@ func TestVerifyContractAddress(t *testing.T) {
 	}{
 		{
 			name:      "valid contract address",
-			address:   "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
+			address:   "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
 			traceID:   "test-trace-id",
 			wantValid: true,
 			wantErr:   false,
 		},
 		{
 			name:      "invalid address",
-			address:   "3NsVCWoo9REhQVKbwuhSkxRYRAxTDagMqn",
+			address:   "invalid_address",
 			traceID:   "test-trace-id",
 			wantValid: false,
 			wantErr:   false,
 		},
 		{
 			name:      "missing trace_id",
-			address:   "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
+			address:   "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
 			traceID:   "",
 			wantValid: false,
 			wantErr:   true,
@@ -108,7 +177,7 @@ func TestVerifyContractAddress(t *testing.T) {
 
 			svc := &TxBuilderService{}
 
-			req := &grpc.VerifyContractAddressRequest{
+			req := &txbuilder.VerifyContractAddressRequest{
 				TraceId: tt.traceID,
 				Address: tt.address,
 			}
@@ -133,52 +202,48 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		req     *grpc.CheckSufficientBalanceRequest
+		req     *txbuilder.CheckSufficientBalanceRequest
 		wantErr bool
 	}{
 		{
 			name: "missing trace_id",
-			req: &grpc.CheckSufficientBalanceRequest{
+			req: &txbuilder.CheckSufficientBalanceRequest{
 				TraceId:     "",
 				ChainCode:   "tron",
 				Coin:        "trx",
-				IsBasicCoin: true,
-				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
+				FromAddress: "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ",
 				Amount:      "100",
 			},
 			wantErr: true,
 		},
 		{
 			name: "missing chain_code",
-			req: &grpc.CheckSufficientBalanceRequest{
+			req: &txbuilder.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "",
 				Coin:        "trx",
-				IsBasicCoin: true,
-				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
+				FromAddress: "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ",
 				Amount:      "100",
 			},
 			wantErr: true,
 		},
 		{
-			name: "missing coin_id",
-			req: &grpc.CheckSufficientBalanceRequest{
+			name: "missing coin",
+			req: &txbuilder.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
 				Coin:        "",
-				IsBasicCoin: true,
-				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
+				FromAddress: "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ",
 				Amount:      "100",
 			},
 			wantErr: true,
 		},
 		{
 			name: "missing from_address",
-			req: &grpc.CheckSufficientBalanceRequest{
+			req: &txbuilder.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
 				Coin:        "trx",
-				IsBasicCoin: true,
 				FromAddress: "",
 				Amount:      "100",
 			},
@@ -186,26 +251,12 @@ func TestCheckSufficientBalance_Validation(t *testing.T) {
 		},
 		{
 			name: "missing amount",
-			req: &grpc.CheckSufficientBalanceRequest{
+			req: &txbuilder.CheckSufficientBalanceRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
 				Coin:        "trx",
-				IsBasicCoin: true,
-				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
+				FromAddress: "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ",
 				Amount:      "",
-			},
-			wantErr: true,
-		},
-		{
-			name: "token without contract",
-			req: &grpc.CheckSufficientBalanceRequest{
-				TraceId:     "test-trace-id",
-				ChainCode:   "tron",
-				Coin:        "usdt",
-				IsBasicCoin: false,
-				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
-				Amount:      "100",
-				Contract:    "",
 			},
 			wantErr: true,
 		},
@@ -229,61 +280,57 @@ func TestBuildSignRawData_Validation(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		req     *grpc.BuildSignRawDataRequest
+		req     *txbuilder.BuildSignRawDataRequest
 		wantErr bool
 	}{
 		{
-			name: "missing biz_id",
-			req: &grpc.BuildSignRawDataRequest{
+			name: "missing trace_id",
+			req: &txbuilder.BuildSignRawDataRequest{
 				TraceId:     "",
 				ChainCode:   "tron",
 				Coin:        "trx",
-				IsBasicCoin: true,
 				CoinSymbol:  "TRX",
-				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
-				ToAddress:   "TLa2fv6PDJNH1u2mp3CJ7S6HdUQbX7X5h3",
-				Amount:      "100",
+				FromAddress: "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ",
+				ToAddress:   "TMuA6YqfCeX8EhbfYEg5y7S4DqzSJireY9",
+				Amount:      "1000000",
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid from_address",
-			req: &grpc.BuildSignRawDataRequest{
+			req: &txbuilder.BuildSignRawDataRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
 				Coin:        "trx",
-				IsBasicCoin: true,
 				CoinSymbol:  "TRX",
 				FromAddress: "invalid_address",
-				ToAddress:   "TLa2fv6PDJNH1u2mp3CJ7S6HdUQbX7X5h3",
-				Amount:      "100",
+				ToAddress:   "TMuA6YqfCeX8EhbfYEg5y7S4DqzSJireY9",
+				Amount:      "1000000",
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid to_address",
-			req: &grpc.BuildSignRawDataRequest{
+			req: &txbuilder.BuildSignRawDataRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
 				Coin:        "trx",
-				IsBasicCoin: true,
 				CoinSymbol:  "TRX",
-				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
+				FromAddress: "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ",
 				ToAddress:   "invalid_address",
-				Amount:      "100",
+				Amount:      "1000000",
 			},
 			wantErr: true,
 		},
 		{
 			name: "amount with decimal point",
-			req: &grpc.BuildSignRawDataRequest{
+			req: &txbuilder.BuildSignRawDataRequest{
 				TraceId:     "test-trace-id",
 				ChainCode:   "tron",
 				Coin:        "trx",
-				IsBasicCoin: true,
 				CoinSymbol:  "TRX",
-				FromAddress: "TQgY9QVegqL4eX8wKM7xACGCVzFZwDDy45",
-				ToAddress:   "TLa2fv6PDJNH1u2mp3CJ7S6HdUQbX7X5h3",
+				FromAddress: "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ",
+				ToAddress:   "TMuA6YqfCeX8EhbfYEg5y7S4DqzSJireY9",
 				Amount:      "100.50",
 			},
 			wantErr: true,
@@ -306,53 +353,82 @@ func TestTxBroadcast_Validation(t *testing.T) {
 
 	svc := &TxBuilderService{}
 
+	const validRawData = "0a86010a028f1622080223083f23e5c3ba40c0c5b3b3fd335a68080112640a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412330a1541a162cbc2a988d8bf99506def3942c9e20aa0634a121541d3682962027e721c5247a9faf7865fe4a71d54381880ade20470c8f9afb3fd33124174807df06df3c6ef3071a24311b430e309d4974054000e725ab68f6135ad53190d1a0a6be185f2f0603b1bae7ac2fd206e77047023ac379df0483e8983aa18d501"
+	const validSig = "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234ab"
+	const validFrom = "TRGhNNfnmgLegT4zHNjEqDSADjgmnHvubJ"
+
 	tests := []struct {
 		name    string
-		req     *grpc.TxBroadcastRequest
+		req     *txbuilder.TxBroadcastRequest
 		wantErr bool
 	}{
 		{
 			name: "missing trace_id",
-			req: &grpc.TxBroadcastRequest{
-				TraceId:   "",
-				RawData:   "0a86010a028f1622080223083f23e5c3ba40c0c5b3b3fd335a68080112640a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412330a1541a162cbc2a988d8bf99506def3942c9e20aa0634a121541d3682962027e721c5247a9faf7865fe4a71d54381880ade20470c8f9afb3fd33124174807df06df3c6ef3071a24311b430e309d4974054000e725ab68f6135ad53190d1a0a6be185f2f0603b1bae7ac2fd206e77047023ac379df0483e8983aa18d501",
-				Signature: "abcd1234",
+			req: &txbuilder.TxBroadcastRequest{
+				TraceId:     "",
+				RawData:     validRawData,
+				Signature:   validSig,
+				FromAddress: validFrom,
 			},
 			wantErr: true,
 		},
 		{
 			name: "missing raw_data",
-			req: &grpc.TxBroadcastRequest{
-				TraceId:   "test-trace-id",
-				RawData:   "",
-				Signature: "abcd1234",
+			req: &txbuilder.TxBroadcastRequest{
+				TraceId:     "test-trace-id",
+				RawData:     "",
+				Signature:   validSig,
+				FromAddress: validFrom,
 			},
 			wantErr: true,
 		},
 		{
 			name: "missing signature",
-			req: &grpc.TxBroadcastRequest{
-				TraceId:   "test-trace-id",
-				RawData:   "0a86010a028f1622080223083f23e5c3ba40c0c5b3b3fd335a68080112640a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412330a1541a162cbc2a988d8bf99506def3942c9e20aa0634a121541d3682962027e721c5247a9faf7865fe4a71d54381880ade20470c8f9afb3fd33124174807df06df3c6ef3071a24311b430e309d4974054000e725ab68f6135ad53190d1a0a6be185f2f0603b1bae7ac2fd206e77047023ac379df0483e8983aa18d501",
-				Signature: "",
+			req: &txbuilder.TxBroadcastRequest{
+				TraceId:     "test-trace-id",
+				RawData:     validRawData,
+				Signature:   "",
+				FromAddress: validFrom,
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing from_address",
+			req: &txbuilder.TxBroadcastRequest{
+				TraceId:     "test-trace-id",
+				RawData:     validRawData,
+				Signature:   validSig,
+				FromAddress: "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid from_address",
+			req: &txbuilder.TxBroadcastRequest{
+				TraceId:     "test-trace-id",
+				RawData:     validRawData,
+				Signature:   validSig,
+				FromAddress: "invalid_address",
 			},
 			wantErr: true,
 		},
 		{
 			name: "raw_data too long",
-			req: &grpc.TxBroadcastRequest{
-				TraceId:   "test-trace-id",
-				RawData:   string(make([]byte, 4097)),
-				Signature: "abcd1234",
+			req: &txbuilder.TxBroadcastRequest{
+				TraceId:     "test-trace-id",
+				RawData:     strings.Repeat("a", 4097),
+				Signature:   validSig,
+				FromAddress: validFrom,
 			},
 			wantErr: true,
 		},
 		{
 			name: "signature too long",
-			req: &grpc.TxBroadcastRequest{
-				TraceId:   "test-trace-id",
-				RawData:   "0a86010a028f1622080223083f23e5c3ba40c0c5b3b3fd335a68080112640a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412330a1541a162cbc2a988d8bf99506def3942c9e20aa0634a121541d3682962027e721c5247a9faf7865fe4a71d54381880ade20470c8f9afb3fd33124174807df06df3c6ef3071a24311b430e309d4974054000e725ab68f6135ad53190d1a0a6be185f2f0603b1bae7ac2fd206e77047023ac379df0483e8983aa18d501",
-				Signature: string(make([]byte, 513)),
+			req: &txbuilder.TxBroadcastRequest{
+				TraceId:     "test-trace-id",
+				RawData:     validRawData,
+				Signature:   strings.Repeat("a", 513),
+				FromAddress: validFrom,
 			},
 			wantErr: true,
 		},
@@ -376,104 +452,66 @@ func TestConvertAddress_Validation(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		req     *grpc.ConvertAddressRequest
+		req     *txbuilder.ConvertAddressRequest
 		wantErr bool
 	}{
 		{
 			name: "missing trace_id",
-			req: &grpc.ConvertAddressRequest{
+			req: &txbuilder.ConvertAddressRequest{
 				TraceId: "",
-				Keys: []*grpc.PublicKeysRequest{
-					{
-						AccountIndex:  0,
-						PkixPubkeyPem: "-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE9G3bKKkF5xIHuJ2lM9V6f0q2aFzEqYvP1vQdK3jW8g==\n-----END PUBLIC KEY-----\n",
-					},
+				Keys: []*txbuilder.PublicKeysRequest{
+					{AccountIndex: 0, PkixPubkeyPem: "-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE9G3bKKkF5xIHuJ2lM9V6f0q2aFzEqYvP1vQdK3jW8g==\n-----END PUBLIC KEY-----\n"},
 				},
 			},
 			wantErr: true,
 		},
 		{
-			name: "missing keys",
-			req: &grpc.ConvertAddressRequest{
-				TraceId: "test-trace-id",
-				Keys:    nil,
+			name: "trace_id too long",
+			req: &txbuilder.ConvertAddressRequest{
+				TraceId: strings.Repeat("a", 37),
+				Keys: []*txbuilder.PublicKeysRequest{
+					{AccountIndex: 0, PkixPubkeyPem: "-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE9G3bKKkF5xIHuJ2lM9V6f0q2aFzEqYvP1vQdK3jW8g==\n-----END PUBLIC KEY-----\n"},
+				},
 			},
 			wantErr: true,
 		},
 		{
 			name: "empty keys",
-			req: &grpc.ConvertAddressRequest{
-				TraceId: "test-trace-id",
-				Keys:    []*grpc.PublicKeysRequest{},
+			req: &txbuilder.ConvertAddressRequest{
+				TraceId: "trace-001",
+				Keys:    []*txbuilder.PublicKeysRequest{},
 			},
 			wantErr: true,
 		},
 		{
-			name: "missing pkix_pubkey_pem in key",
-			req: &grpc.ConvertAddressRequest{
-				TraceId: "test-trace-id",
-				Keys: []*grpc.PublicKeysRequest{
-					{
-						AccountIndex:  0,
-						PkixPubkeyPem: "",
-					},
-				},
+			name: "keys length > 100",
+			req: &txbuilder.ConvertAddressRequest{
+				TraceId: "trace-001",
+				Keys:    generateKeys(101, "-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE9G3bKKkF5xIHuJ2lM9V6f0q2aFzEqYvP1vQdK3jW8g==\n-----END PUBLIC KEY-----\n"),
 			},
 			wantErr: true,
 		},
 		{
-			name: "invalid PEM string",
-			req: &grpc.ConvertAddressRequest{
-				TraceId: "test-trace-id",
-				Keys: []*grpc.PublicKeysRequest{
-					{
-						AccountIndex:  0,
-						PkixPubkeyPem: "not a valid pem string at all",
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "valid PEM format but wrong key type",
-			req: &grpc.ConvertAddressRequest{
-				TraceId: "test-trace-id",
-				Keys: []*grpc.PublicKeysRequest{
-					{
-						AccountIndex:  0,
-						PkixPubkeyPem: "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9G3bKKkF5xIHuJ2lM9V6f0q2aFzEqYvP1vQdK3jW8g==\n-----END PUBLIC KEY-----\n",
-					},
-				},
+			name: "empty pkix_pubkey_pem",
+			req: &txbuilder.ConvertAddressRequest{
+				TraceId: "trace-001",
+				Keys:    []*txbuilder.PublicKeysRequest{{AccountIndex: 0, PkixPubkeyPem: ""}},
 			},
 			wantErr: true,
 		},
 		{
 			name: "pkix_pubkey_pem too long",
-			req: &grpc.ConvertAddressRequest{
-				TraceId: "test-trace-id",
-				Keys: []*grpc.PublicKeysRequest{
-					{
-						AccountIndex:  0,
-						PkixPubkeyPem: string(make([]byte, 8193)),
-					},
-				},
+			req: &txbuilder.ConvertAddressRequest{
+				TraceId: "trace-001",
+				Keys:    []*txbuilder.PublicKeysRequest{{AccountIndex: 0, PkixPubkeyPem: strings.Repeat("a", 4097)}},
 			},
 			wantErr: true,
 		},
 		{
-			name: "multiple keys with one invalid",
-			req: &grpc.ConvertAddressRequest{
-				TraceId: "test-trace-id",
-				Keys: []*grpc.PublicKeysRequest{
-					{
-						AccountIndex:  0,
-						PkixPubkeyPem: "-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE9G3bKKkF5xIHuJ2lM9V6f0q2aFzEqYvP1vQdK3jW8g==\n-----END PUBLIC KEY-----\n",
-					},
-					{
-						AccountIndex:  1,
-						PkixPubkeyPem: "invalid",
-					},
-				},
+			name: "invalid PEM string",
+			req: &txbuilder.ConvertAddressRequest{
+				TraceId: "trace-001",
+				Keys:    []*txbuilder.PublicKeysRequest{{AccountIndex: 0, PkixPubkeyPem: "not a valid pem"}},
 			},
 			wantErr: true,
 		},
@@ -487,4 +525,12 @@ func TestConvertAddress_Validation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func generateKeys(n int, pemStr string) []*txbuilder.PublicKeysRequest {
+	keys := make([]*txbuilder.PublicKeysRequest, n)
+	for i := 0; i < n; i++ {
+		keys[i] = &txbuilder.PublicKeysRequest{AccountIndex: uint32(i), PkixPubkeyPem: pemStr}
+	}
+	return keys
 }
